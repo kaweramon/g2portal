@@ -1,0 +1,147 @@
+<project name="G2Portal" basedir=".">
+
+	<property name="lib.dir" value="lib"/>
+	<property name="src.dir"     value="src"/>
+	<property name="build.dir"   value="build"/>
+	<property name="classes.dir" value="${build.dir}/classes"/>
+	<property name="jar.dir"     value="${build.dir}/jar"/>
+	<property name="signed.dir"     value="${build.dir}/signed"/>
+	<property name="main.dir"     value="com/g2soft/g2portal"/>
+	<property name="main-class"  value="com.g2soft.g2portal.Main"/>
+	<property name="lib.dir"     value="lib"/>
+	<property name="certificate.dir" value="resources/certificate/g2soft.p12"/>
+	<property name="version"     value="0.0.8"/>
+
+	<path id="classpath">
+		<fileset dir="${lib.dir}" includes="**/*.jar"/>
+	</path>
+
+	<target name="clean">
+		<delete dir="${build.dir}"/>
+	</target>
+
+	<target name="compile">
+		<mkdir dir="${classes.dir}"/>
+		<copy todir="${classes.dir}">
+	        <fileset dir=".">
+		        <include name="images/**"/>
+	        	<include name="${lib.dir}/**"/>
+	        	<include name="src/main/resources/**/*.xml" />
+	        </fileset>
+	    </copy>
+		<javac srcdir="src" destdir="${classes.dir}" includeantruntime="yes">
+			 <classpath path="${classpath}">
+			 	
+               <fileset dir="${lib.dir}">
+                  <include name="**/*.jar" />               	  
+             	  <include name="../../images/**" />
+			   </fileset>
+			 	
+			 	<fileset dir="resources">
+                  <include name="src/main/resources/**/*.xml" />               	  
+				</fileset>	
+			 	
+	         </classpath>
+		</javac>
+	</target>
+
+	<target name="jar">
+		<mkdir dir="${jar.dir}"/>		
+		<jar destfile="${jar.dir}/${ant.project.name}__V${version}.jar" basedir="${classes.dir}">
+			
+			<fileset dir="images/">
+	            <include name="images/**" />
+				<include name="**/*.xml" />
+	        </fileset>
+			
+			<zipgroupfileset dir="${lib.dir}" excludes="META-INF/**">
+				<include name="**/*.jar"/>												
+			</zipgroupfileset>
+			
+			<manifest>
+				<attribute name="Main-Class" value="${main-class}"/>
+			</manifest>
+			
+		</jar>
+	</target>
+
+	<target name="run" depends="jar">
+		<java fork="true" classname="${main-class}">
+			<classpath>
+				<pathelement path="${classpath}"/>
+		      	<pathelement location="${lib.dir}/**/*.jar"/>
+				<fileset dir="${lib.dir}">
+			        <include name="**/*.jar"/>
+		      	</fileset>
+				<path refid="classpath"/>
+				<path location="${jar.dir}/${ant.project.name}__V${version}.jar"/>
+			</classpath>
+		</java>
+	</target>
+	
+	<target name="signjar">
+		<mkdir dir="${signed.dir}"/>
+		
+		<signjar jar="${jar.dir}/${ant.project.name}__V${version}.jar" 
+				alias="g2soft" 
+				storetype="pkcs12" storepass="270544" 
+				keystore="${certificate.dir}" 
+				keypass="270544" signedjar="${signed.dir}/${ant.project.name}__V${version}.jar">
+		</signjar>
+		<!--
+		<signjar jar="${lib.dir}/httpcore-4.4.6.jar" 
+				alias="g2soft" 
+				storetype="pkcs12" storepass="270544" 
+				keystore="${certificate.dir}" 
+				keypass="270544" signedjar="${signed.dir}/httpcore-4.4.6.jar">
+		</signjar>
+		
+		<signjar jar="${lib.dir}/httpclient-4.5.3.jar" 
+				alias="g2soft" 
+				storetype="pkcs12" storepass="270544" 
+				keystore="${certificate.dir}" 
+				keypass="270544" signedjar="${signed.dir}/httpclient-4.5.3.jar">
+		</signjar>
+		
+		<signjar jar="${lib.dir}/commons-logging-1.2.jar" 
+				alias="g2soft" 
+				storetype="pkcs12" storepass="270544" 
+				keystore="${certificate.dir}" 
+				keypass="270544" signedjar="${signed.dir}/commons-logging-1.2.jar">
+		</signjar>
+		-->
+		<!--		
+		<signjar jar="${lib.dir}/dropbox-core-sdk-3.0.6.jar" 
+						alias="g2soft" 
+						storetype="pkcs12" storepass="270544" 
+						keystore="${certificate.dir}" 
+						keypass="270544" signedjar="${signed.dir}/dropbox-core-sdk-3.0.6.jar">
+				</signjar>
+		-->
+		<!--
+		<signjar jar="${lib.dir}/httpcore-4.4.6.jar" 
+				alias="g2soft" 
+				storetype="pkcs12" storepass="270544" 
+				keystore="${certificate.dir}" 
+				keypass="270544" signedjar="${signed.dir}/httpcore-4.4.6.jar">
+		</signjar>
+		
+		
+		<signjar jar="${lib.dir}/httpclient-4.5.3.jar" 
+				alias="g2soft" 
+				storetype="pkcs12" storepass="270544" 
+				keystore="${certificate.dir}" 
+				keypass="270544" signedjar="${signed.dir}/httpclient-4.5.3.jar">
+		</signjar>
+		-->
+		<!--
+		<signjar jar="${lib.dir}/jackson-core-2.6.1.jar" 
+				alias="g2soft" 
+				storetype="pkcs12" storepass="270544" 
+				keystore="${certificate.dir}" 
+				keypass="270544" signedjar="${signed.dir}/jackson-core-2.6.1.jar">
+		</signjar>
+		-->
+	</target>
+	
+</project>
