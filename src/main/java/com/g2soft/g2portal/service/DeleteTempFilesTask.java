@@ -31,18 +31,24 @@ class DeleteFiles extends TimerTask {
 	@Override
 	public void run() {
 		labelStatus.setText("Excluindo arquivos tempor\u00E1rios");
+		System.out.println("Excluindo arquivos tempor\u00E1rios");
 		Integer currentVersion = g2AppsManager.getCurrentVersionFromConfig();
-		for (File file : getOldFiles(currentVersion)) {
-			try {
-				labelStatus.setText("Excluindo arquivo: " + file.getName());
-				System.out.println("Excluindo arquivo: " + file.getName());
-				if (file.exists()) {
-					file.delete();	
-					Thread.sleep(500);
+		if (currentVersion != null) {
+			List<File> oldFiles = getOldFiles(currentVersion);
+			if (oldFiles != null && oldFiles.size() > 0) {
+				for (File file : oldFiles) {
+					try {
+						labelStatus.setText("Excluindo arquivo: " + file.getName());
+						System.out.println("Excluindo arquivo: " + file.getName());
+						if (file.exists()) {
+							file.delete();	
+							Thread.sleep(500);
+						}
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			}			
 		}
 		labelStatus.setText("");
 	}
@@ -50,16 +56,22 @@ class DeleteFiles extends TimerTask {
 	private List<File> getOldFiles(Integer currentVersion) {
 		List<File> oldFiles = new ArrayList<File>();
 		File tempFolder = new File("C:\\G2 Soft\\Updater\\Temp");
-		for (File file : tempFolder.listFiles()) {
-			if (getVersionDownload(file.getName()) < currentVersion) {
-				oldFiles.add(file);
+		if (tempFolder.exists()) {
+			for (File file : tempFolder.listFiles()) {
+				Integer versionDownload = getVersionDownload(file.getName());
+				if (versionDownload != null && versionDownload < currentVersion)
+					oldFiles.add(file);
 			}
+			return oldFiles;
 		}
-		return oldFiles;
+		return null;
 	}
 	
 	private Integer getVersionDownload(String versionDownloaded) {
-		return Integer.parseInt(versionDownloaded.substring(versionDownloaded.indexOf("_") + 1, versionDownloaded.indexOf(".")));		
+		if (versionDownloaded != null && versionDownloaded.length() > 0)
+			return Integer.parseInt(versionDownloaded.substring(versionDownloaded.indexOf("_") + 1, versionDownloaded.indexOf(".")));
+		else
+			return null;
 	}
 	
 }

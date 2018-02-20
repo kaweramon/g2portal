@@ -18,6 +18,8 @@ import java.util.zip.ZipFile;
 import javax.swing.JLabel;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Logger;
 
 import com.dropbox.core.DbxDownloader;
 import com.dropbox.core.DbxException;
@@ -37,9 +39,14 @@ public class DropboxDownloadPackage {
 	G2AppsManager appManages = new G2AppsManager();
 	private BufferedReader in;
 	
+	private static final Logger logger = (Logger) LogManager.getLogger(DropboxDownloadPackage.class.getName());
+	
 	public void downloadPackage(JLabel labelTaskStatus, Apps app) {
 		OutputStream out = null;
 		try {
+			File updateFolder = new File(G2SoftUpdateDir);
+			if (!updateFolder.exists())
+				updateFolder.mkdir();
 			File tempFolder = new File(G2SoftUpdateDir + "\\Temp");
 			if (!tempFolder.exists())
 				tempFolder.mkdir();
@@ -62,13 +69,13 @@ public class DropboxDownloadPackage {
 				}
 			}));
 		} catch (DbxException | IOException e) {
-			e.printStackTrace();
+			logger.error(e);
 		}
 	}
 	
 	private void unpackUpdatePackage(Apps app) {
 		ZipFile zip;
-		Enumeration entries;
+		Enumeration<?> entries;
 		String dest = G2SoftUpdateDir + "\\Files\\";
 		try {
 			zip = new ZipFile(G2SoftUpdateDir + "\\Temp\\" + app.getLink());
@@ -85,8 +92,7 @@ public class DropboxDownloadPackage {
 			writeOnLog("pacote_descompactado=" + app.getVersionUp());
 			writeLastVersionDownloadedOnConfig(app);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(e);
 		}
 	}
 	
@@ -103,7 +109,7 @@ public class DropboxDownloadPackage {
 			output.flush();
 			output.close();			
 		} catch (IOException e) {
-			System.out.println(e.getMessage());
+			logger.error(e);
 		}
 	}
 	
@@ -114,15 +120,17 @@ public class DropboxDownloadPackage {
 			if (contentConfig.contains("versao_baixada")) {
 				contentConfig = contentConfig.replaceAll("versao_baixada=" + getCurrentDownloadedVersionFromConfig(), "versao_baixada=" + appG2.getVersionUp());
 				FileUtils.write(fileConfig, contentConfig, "UTF-8");
+				logger.info("Escrevendo versao_baixada no config " + appG2.getVersionUp());
 			} else { 
 				BufferedWriter output = new BufferedWriter(new FileWriter("C:\\G2 Soft\\config.ini", true));
 				output.newLine();
 				output.write("versao_baixada=" + appG2.getVersionUp());
 				output.flush();
 				output.close();
+				logger.info("Escrevendo versao_baixada no config " + appG2.getVersionUp());
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error(e);
 		}
 	}
 	
@@ -131,15 +139,14 @@ public class DropboxDownloadPackage {
 			in = new BufferedReader(new FileReader("C:\\G2 Soft\\config.ini"));
 			String line;
 			while ((line = in.readLine()) != null) {				
-				if (line.contains("versao_baixada")) {
+				if (line.contains("versao_baixada"))
 					return Integer.parseInt(line.substring(line.indexOf("=") + 1, line.length()));
-				} 
 			}
 			in.close();
 		} catch (NumberFormatException e) {
-			System.out.println(e);
+			logger.error(e);
 		} catch (IOException e) {
-			System.out.print(e);
+			logger.error(e);
 		} 
 		return null;
 	}
@@ -149,13 +156,14 @@ public class DropboxDownloadPackage {
 		try {
 			if (FileUtils.waitFor(filesFolder, 2)) {
 				System.out.println("Limpando pasta Files");
+				logger.info("Limpando pasta Files");
 				FileUtils.cleanDirectory(filesFolder);
 				Thread.sleep(2000);
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error(e);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			logger.error(e);
 		}
 	}
 	

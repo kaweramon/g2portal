@@ -54,6 +54,7 @@ public class MainMenu implements MouseListener {
 	private G2AppsManager g2AppsManager;
 	private JLabel labelTaskStatus;
 	private JLabel labelStatus;
+	private JLabel labelPcType;
 	
 	public MainMenu() {
 		g2AppsManager = new G2AppsManager();
@@ -81,9 +82,9 @@ public class MainMenu implements MouseListener {
 		mainJFrame.setSize(800,  500);
 		mainJFrame.setLayout(null);
 		mainJFrame.setVisible(true);
-		g2Tasks = new G2Tasks(footerPanel);		
+		g2Tasks = new G2Tasks(footerPanel);
 		g2Tasks.connectToDB(g2AppsManager, labelG2, labelPDV, labelG2Version, 
-				labelConnectionStatus, labelTaskStatus, labelBillet);
+				labelConnectionStatus, labelTaskStatus, labelBillet, labelPcType);
 		new DeleteTempFilesTask(labelTaskStatus, g2AppsManager);
 		g2Tasks.checkIsBilletLate(labelBillet);
 		g2Tasks.deleteG2Update(g2AppsManager);
@@ -187,7 +188,6 @@ public class MainMenu implements MouseListener {
 		ImageIcon imgDigitalCertificate = createImageIcon("/images/banner-portal.png", "Banner Portal Certificado");
 		JLabel imgJLabel = new JLabel(imgDigitalCertificate);
 		rightPanel.add(imgJLabel);
-		
 		Container mainContainer = mainJFrame.getContentPane();
 		mainContainer.add(rightPanel, BorderLayout.LINE_END);
 	}
@@ -240,7 +240,7 @@ public class MainMenu implements MouseListener {
 		radioButtonG2Update.setBounds(210 + insets.left, 23 + insets.top, 110, 
 				size.height + 9);
 		
-		JLabel labelPortalVersion = new JLabel("Vers\u00E3o 0.0.8");
+		JLabel labelPortalVersion = new JLabel("Vers\u00E3o 0.1.4");
 		labelPortalVersion.setBounds(685 + insets.left, 35 + insets.top, 100, size.height + 10);
 		
 		labelConnectionStatus.setBounds(685 + insets.left, 15 + insets.top, 90, size.height + 10);
@@ -258,6 +258,9 @@ public class MainMenu implements MouseListener {
 		labelTaskStatus = new JLabel("");
 		labelTaskStatus.setBounds(70 + insets.left, 39 + insets.top, 300, size.height + 10);
 		
+		labelPcType = new JLabel("");
+		labelPcType.setBounds(685 + insets.left, 5, 70, 13);
+		
 		footerPanel.add(labelServices, JPanel.LEFT_ALIGNMENT);
 		footerPanel.add(radioButtonG2, JPanel.LEFT_ALIGNMENT);
 		footerPanel.add(radioButtonPDV, JPanel.LEFT_ALIGNMENT);
@@ -270,6 +273,7 @@ public class MainMenu implements MouseListener {
 		footerPanel.add(labelConnectionStatus);
 		footerPanel.add(labelStatus);
 		footerPanel.add(labelTaskStatus);
+		footerPanel.add(labelPcType);
 		Container mainContainer = mainJFrame.getContentPane();
 		footerPanel.setBackground(Color.WHITE);
 		mainContainer.add(footerPanel, BorderLayout.SOUTH);

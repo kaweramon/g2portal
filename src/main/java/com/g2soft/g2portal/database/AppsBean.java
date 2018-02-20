@@ -87,7 +87,6 @@ public class AppsBean {
 			statement.executeUpdate();
 		} catch (SQLException e) {
 			logger.error(e.getMessage());
-			logger.error(e.getMessage());
 		}
 	}
 	
@@ -119,20 +118,24 @@ public class AppsBean {
 	
 	public Apps getAppG2Server() {
 		
-		/*CloseableHttpClient httpClient = HttpClients.createDefault();
-		HttpGet httpGet = new HttpGet("http://177.75.66.175:6464/apps/1");
-		CloseableHttpResponse response = null;
-		Apps g2App = new Apps();
-		try {
-			response = httpClient.execute(httpGet);
-			System.out.println(EntityUtils.toString(response.getEntity()));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}*/
-		
 		Apps appG2 = new Apps();
+		
+		String pathServer = "";
+		String contentConfig;
 		try {
-			URL url = new URL("http://177.75.66.175:6464/apps/1");
+			contentConfig = FileUtils.readFileToString(new File("C:\\G2 Soft\\config.ini"), "UTF-8");
+			if (contentConfig != null && contentConfig.length() > 0 && contentConfig.contains("servidor=G2"))
+				pathServer = "http://localhost:6464/apps/2";
+			else
+				pathServer = "http://177.75.66.175:6464/apps/2";
+		} catch (IOException e1) {
+			logger.error(e1);
+			pathServer = "http://177.75.66.175:6464/apps/2";
+			e1.printStackTrace();
+		}
+		
+		try {
+			URL url = new URL(pathServer);
 			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 			conn.setRequestMethod("GET");
 			conn.setRequestProperty("Accept", "application/json");
@@ -140,6 +143,7 @@ public class AppsBean {
 			if (conn.getResponseCode() != 200) {
 				System.out.println("Erro na conexão com o servidor g2 : " + conn.getResponseCode());
 				logger.error("Erro na conexão com o servidor g2 : " + conn.getResponseCode());
+				return null;
 			}
 			
 			InputStream inputStream = conn.getInputStream();			
@@ -168,46 +172,10 @@ public class AppsBean {
                 }
 			}
 			
-			/*BufferedReader br = new BufferedReader(new InputStreamReader(
-					(conn.getInputStream())));
-			
-			String output;
-			System.out.println("Output from Server .... \n");
-			output = br.readLine();*/
-
-			
-			
-			
-			
-			/*JsonFactory factory = new JsonFactory();		
-			JsonParser  parser  = factory.createParser(output);
-			while(!parser.isClosed()) {
-				JsonToken jsonToken = parser.nextToken();
-				
-				if (JsonToken.FIELD_NAME.equals(jsonToken)) {
-					switch (parser.getCurrentName()) {
-						case "id":
-							g2App.setId(Integer.parseInt(parser.getValueAsString()));
-							break;
-						case "versao_atual":
-							g2App.setCurrentVersion(parser.getIntValue());
-							break;
-						case "versao_up":
-							g2App.setVersionUp(parser.getIntValue());
-							break;
-						case "link_download":
-							g2App.setLink(parser.getValueAsString());
-							break;
-						default:
-							break;
-					}
-				}
-				
-			}*/
 			conn.disconnect();
 		}  catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.out.println("Erro na conexão com o servidor g2 : " + e.getMessage());
+			logger.error("Erro na conexão com o servidor g2 : " +  e.getMessage());
 		}	
 		return appG2;
 	}
