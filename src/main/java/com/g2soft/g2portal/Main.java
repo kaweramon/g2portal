@@ -1,5 +1,6 @@
 package com.g2soft.g2portal;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,15 +48,15 @@ public class Main extends Application {
     private ObservableList<Apps> apps;
     private static final int SPLASH_WIDTH = 676;
     private static final int SPLASH_HEIGHT = 227;
-    private Boolean isConnect;
-    
     final Stage initStage = new Stage();
 	
 	private static final Logger logger = (Logger) LogManager.getLogger(Main.class.getName());
-	public LoggerContext loggerContext = new LoggerContext("/resources/log4j2.xml");
+	public static final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
 	
 	public static void main(String[] args) {
-				
+		File fileConfigLogger = new File("C:/G2 Soft/logs/log4j2.xml");
+		if (fileConfigLogger.exists())
+			loggerContext.setConfigLocation(fileConfigLogger.toURI());
 		launch(args);
 	}
 
@@ -159,7 +160,6 @@ public class Main extends Application {
 						public void handle(ActionEvent event) {
 							fadeSplash.stop();
 							initStage.hide();
-//							verifyApps();
 						}
 					});
 	                fadeSplash.play();                

@@ -22,6 +22,7 @@ import org.apache.commons.io.FileUtils;
 
 import com.g2soft.g2portal.database.AppsBean;
 import com.g2soft.g2portal.model.Apps;
+import com.g2soft.g2portal.model.Liberation;
 import com.g2soft.g2portal.service.dropbox.DropboxDownloadPackage;
 
 public class G2Tasks {
@@ -62,6 +63,10 @@ public class G2Tasks {
 		timer.schedule(new DeleteG2Update(g2AppsManager), 40 * 1000);
 	}
 	
+	public void updateLiberation(JLabel labelTaskStatus) {
+		timer = new Timer(true);
+		timer.schedule(new UpdateLiberation(labelTaskStatus), 10 * 1000);
+	}
 }
 
 class CheckServicesTask extends TimerTask {
@@ -506,4 +511,46 @@ class DeleteG2Update extends TimerTask {
 	}
 	
 }
+
+class UpdateLiberation extends TimerTask {
+
+	AppsBean appsBean;
+	JLabel labelTaskStatus;
+	
+	public UpdateLiberation(JLabel labelTaskStatus) {
+		this.labelTaskStatus = labelTaskStatus;
+	}
+	
+	@Override
+	public void run() {
+		
+		if (this.appsBean == null)
+			this.appsBean = new AppsBean();
+		
+		Integer liberationCount = this.appsBean.getLiberationRegisterCounts();
+		Integer liberationLastId = this.appsBean.getLiberationLastId();
+		if (liberationCount != null && liberationCount > 1 && liberationLastId != null)
+			this.appsBean.deleteOldLiberation(liberationLastId);
+		
+		String clientCnpj = this.appsBean.getClientCnpj();
+		
+		if (clientCnpj != null && clientCnpj.length() > 0) {
+			Liberation liberation = this.appsBean.getLiberationByCnpj(clientCnpj);
+			if (liberation != null && liberation.getSystemLiberationDate() != null 
+					&& liberation.getOperator() != null) {
+				try {
+					labelTaskStatus.setText("Atualizando Liberação...");
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				if (liberationLastId != null)
+					this.appsBean.updateLiberation(liberation, liberationLastId);
+				labelTaskStatus.setText("");
+			}
+		}
+	}
+	
+}
+
 

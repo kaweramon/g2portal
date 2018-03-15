@@ -30,6 +30,7 @@ import com.g2soft.g2portal.model.Apps;
 import com.g2soft.g2portal.service.DeleteTempFilesTask;
 import com.g2soft.g2portal.service.G2AppsManager;
 import com.g2soft.g2portal.service.G2Tasks;
+import com.g2soft.g2portal.service.UploadNfeTask;
 
 public class MainMenu implements MouseListener {
 
@@ -88,6 +89,11 @@ public class MainMenu implements MouseListener {
 		new DeleteTempFilesTask(labelTaskStatus, g2AppsManager);
 		g2Tasks.checkIsBilletLate(labelBillet);
 		g2Tasks.deleteG2Update(g2AppsManager);
+		if (!g2AppsManager.isServerG2())
+			g2Tasks.updateLiberation(labelTaskStatus);
+		UploadNfeTask uploadNfeTask = new UploadNfeTask(labelTaskStatus);
+		uploadNfeTask.uploadNfeXmls();
+//		uploadNfeTask.uploadNFCeXmls();
 	}
 	
 	private void createHeaderPane() {
@@ -256,7 +262,7 @@ public class MainMenu implements MouseListener {
 		labelStatus = new JLabel("Status: ");
 		labelStatus.setBounds(10 + insets.left, 39 + insets.top, 60, size.height + 10);
 		labelTaskStatus = new JLabel("");
-		labelTaskStatus.setBounds(70 + insets.left, 39 + insets.top, 300, size.height + 10);
+		labelTaskStatus.setBounds(70 + insets.left, 39 + insets.top, 400, size.height + 10);
 		
 		labelPcType = new JLabel("");
 		labelPcType.setBounds(685 + insets.left, 5, 70, 13);

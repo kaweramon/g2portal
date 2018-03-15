@@ -395,6 +395,15 @@ public class G2AppsManager {
 		return false;
 	}
 	
+	public Boolean isServerG2() {
+		try {
+			return FileUtils.readFileToString(new File("C:\\G2 Soft\\config.ini"), "UTF-8").contains("servidor=G2");
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+		}
+		return false;
+	}
+	
 	public boolean isVersionDownloadGreatherThanCurrent() {
 		File fileConfig = new File("C:\\G2 Soft\\config.ini");
 		BufferedReader buffer;
@@ -413,6 +422,7 @@ public class G2AppsManager {
 		    return (downloadedVersion != null && currentVersion != null && Integer.parseInt(downloadedVersion) > Integer.parseInt(currentVersion));
 		} catch (IOException e) {
 			e.printStackTrace();
+			logger.error(e);
 		}
 		return false;
 	}
@@ -446,6 +456,7 @@ public class G2AppsManager {
 			
 		} catch (IOException e) {
 			e.printStackTrace();
+			logger.error(e);
 		}
 		return null;
 	}
@@ -456,6 +467,7 @@ public class G2AppsManager {
 			return contentConfig.contains("updater=s");
 		} catch (IOException e) {
 			e.printStackTrace();
+			logger.error(e);
 		}
 		return false;
 	}
