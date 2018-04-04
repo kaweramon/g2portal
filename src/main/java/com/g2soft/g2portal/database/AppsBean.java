@@ -61,9 +61,12 @@ public class AppsBean {
 	
 	private static final String SQL_SELECT_COUNT_LIBERATION = "SELECT COUNT(Codigo) as count FROM liberacao l;";
 	private static final String SQL_SELECT_LAST_REGISTER_LIBERATION = "SELECT MAX(Codigo) as Codigo FROM liberacao l;";
-	private static final String SQL_DELETE_LIBERATION = "DELETE FROM liberacao WHERE Codigo != ?";
-	private static final String UPDATE_LIBERATION = "UPDATE liberacao SET Liberacao_sistema = ?, Operador = ?, Liberacao_temp = ?,"
-			+ "Obs = ? ";
+	private static final String SQL_DELETE_LIBERATION = "DELETE FROM g2mensagem.liberacao WHERE Codigo != ?";
+	private static final String UPDATE_LIBERATION = "UPDATE liberacao SET Liberacao_sistema = ?, Operador = ?, Liberacao_temp = ?, versao_sys_cliente = ?, Obs = ? ";
+	
+	private static final String INSERT_LIBERATION = "INSERT INTO liberacao (Liberacao_sistema, Operador, Liberacao_temp, ID_Cliente, Obs, versao_sys_cliente) VALUES ";
+	
+	private static final String GET_LIBERATION_BY_ID_CLIENTE = "SELECT * FROM liberacao WHERE ID_CLIENTE = ?";
 	
 	private Connection connection;
 	private Connection connectionG2Mensagem;
@@ -88,6 +91,8 @@ public class AppsBean {
 	
 	private static final String SQL_SELECT_PATH_BACKUP_CONFIG = "SELECT Config_Destino_Backup FROM bancr.configuracoes;";
 
+	private static final String SQL_UPDATE_CONFIG_COD_G2 = "UPDATE bancr.configuracoes SET Cod_cli_g2_interno = ?";
+	
 	private static final Logger logger = (Logger) LogManager.getLogger(AppsBean.class.getName());
 	
 	public AppsBean() {
@@ -107,8 +112,11 @@ public class AppsBean {
 			}
 		} catch (ClassNotFoundException e) {
 			System.out.println(e.getMessage());
+			logger.error("Erro ao se conectar ao banco de dados: " + e.getMessage());
+			return false;
 		} catch (SQLException e) {
 			System.out.println(e.getMessage());
+			logger.error("Erro ao se conectar ao banco de dados: " + e.getMessage());
 			return false;			
 		}
 		return false;
@@ -126,8 +134,11 @@ public class AppsBean {
 			}
 		} catch (ClassNotFoundException e) {
 			System.out.println(e.getMessage());
+			logger.error("Erro ao se conectar ao banco de dados G2Mensagem: " + e.getMessage());
+			return false;
 		} catch (SQLException e) {
 			System.out.println(e.getMessage());
+			logger.error("Erro ao se conectar ao banco de dados G2Mensagem: " + e.getMessage());
 			return false;			
 		}
 		return false;
@@ -387,6 +398,10 @@ public class AppsBean {
 			
 			System.out.println(conn.getResponseCode());
 			
+			if (conn.getResponseCode() != 200) {
+				return null;
+			}
+			
 			InputStream inputStream = conn.getInputStream();			
 //			JsonParser jsonParser = Json.createParser(inputStream);
 			
@@ -410,7 +425,13 @@ public class AppsBean {
 					long verDate = (long) jsonObject.get("verificationDate");
 					if (verDate > 0)
 						liberation.setVerificationDate(new Timestamp(verDate));
-				}				
+				}
+				if (jsonObject.get("clientId") != null) {
+					liberation.setClientId((Long) jsonObject.get("clientId"));
+				}
+				if (jsonObject.get("clientSystemVersion") != null) {
+					liberation.setClientSystemVersion((String) jsonObject.get("clientSystemVersion"));
+				}
 			} catch (org.json.simple.parser.ParseException e) {
 				e.printStackTrace();
 			}
@@ -502,13 +523,13 @@ public class AppsBean {
 		return null;
 	}
 	
-	public void deleteOldLiberation(Integer lastId) {
+	public void deleteOldLiberation(Long id) {
 		if (connectionG2Mensagem == null)
 			connectToDBG2Mensagem();
 		
 		try {
 			this.statement = connectionG2Mensagem.prepareStatement(SQL_DELETE_LIBERATION);
-			this.statement.setInt(1, lastId);
+			this.statement.setLong(1, id);
 			System.out.println(SQL_DELETE_LIBERATION);
 			this.statement.executeUpdate();
 		} catch (SQLException e) {
@@ -517,27 +538,123 @@ public class AppsBean {
 		}
 	}
 	
-	public void updateLiberation(Liberation liberation, Integer lastIndexId) {
+	public void insertLiberation(Liberation liberation) {
+		if (connectionG2Mensagem == null)
+			connectToDBG2Mensagem();
+		
+		/*String sql = INSERT_LIBERATION + "('" + liberation.getSystemLiberationDate() + "', '" + 
+				liberation.getOperator() + "', '" + liberation.getTempLiberationDate() + "', " + 
+				liberation.getClientId() + ", '" + liberation.getObs() + "');";*/
+		
+		String sql = INSERT_LIBERATION;
+		
+		if (liberation.getSystemLiberationDate() != null) {
+			sql += "('" + liberation.getSystemLiberationDate() + "', ";
+		} else {
+			sql += "(null,";
+		}
+		
+		if (liberation.getOperator() != null) {
+			sql += "'" + liberation.getOperator() + "', ";
+		} else {
+			sql += "null, ";
+		}
+		
+		if (liberation.getTempLiberationDate() != null) {
+			sql += "'" + liberation.getTempLiberationDate() + "', ";
+		} else {
+			sql += "null, ";
+		}
+		
+		if (liberation.getClientId() != null) {
+			sql += liberation.getClientId() + ", ";
+		}
+		
+		if (liberation.getObs() != null) {
+			sql += "'" + liberation.getObs() + "', ";
+		} else {
+			sql += "null, ";
+		}
+		
+		if (liberation.getClientSystemVersion() != null) {
+			sql += "'" + liberation.getClientSystemVersion() + "');";
+		} else {
+			sql += "null);";
+		}
+		
+		try {
+			this.statement = connectionG2Mensagem.prepareStatement(sql);
+			this.statement.executeUpdate();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public Long hasLiberationIdCliente(Long clientId) {
+		if (connectionG2Mensagem == null)
+			connectToDBG2Mensagem();
+		
+		try {
+			this.statement = connectionG2Mensagem.prepareStatement(GET_LIBERATION_BY_ID_CLIENTE);
+			this.statement.setLong(1, clientId);
+			this.resultSet = this.statement.executeQuery();
+			
+			if (this.resultSet.next()) {
+				return this.resultSet.getLong("Codigo");
+			}
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+	
+	
+	public void updateLiberation(Liberation liberation, Long clientId) {
 		if (connectionG2Mensagem == null)
 			connectToDBG2Mensagem();
 
 		String sql = UPDATE_LIBERATION;
 		if (liberation.getVerificationDate() != null)
 			sql += ", data_verificacao = ?";
-		sql +=  " WHERE Codigo = " + lastIndexId;
+		sql +=  " WHERE ID_Cliente = " + clientId;
 		System.out.println(sql);
 		try {
 			this.statement = connectionG2Mensagem.prepareStatement(sql);
 			this.statement.setDate(1, liberation.getSystemLiberationDate());
 			this.statement.setString(2, liberation.getOperator());
 			this.statement.setDate(3, liberation.getTempLiberationDate());
-			this.statement.setString(4, liberation.getObs());
+			this.statement.setString(4, liberation.getClientSystemVersion());
+			this.statement.setString(5, liberation.getObs());
+			
 			if (liberation.getVerificationDate() != null)
-				this.statement.setTimestamp(5, liberation.getVerificationDate());
+				this.statement.setTimestamp(6, liberation.getVerificationDate());
 			this.statement.executeUpdate();
 		} catch (SQLException e) {
 			logger.error(e.getMessage());
 			e.printStackTrace();
+		}
+	}
+	
+	public void updateConfigInternalClientCode(Long clientId) {
+		
+		if (connection == null)
+			connectToDB();
+		
+		if (clientId != null) {
+			try {
+				this.statement = connection.prepareStatement(SQL_UPDATE_CONFIG_COD_G2);
+				this.statement.setLong(1, clientId);
+				
+				this.statement.executeUpdate();
+				
+			} catch (SQLException e) {
+				logger.error(e.getMessage());
+				e.printStackTrace();
+			}
 		}
 		
 	}

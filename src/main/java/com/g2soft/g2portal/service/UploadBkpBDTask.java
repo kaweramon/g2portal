@@ -5,8 +5,11 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -28,11 +31,11 @@ public class UploadBkpBDTask {
 	Timer timer;
 	JLabel labelTaskStatus;
 	
-	public UploadBkpBDTask(JLabel labelTaskStatus, AppsBean appsBean) {
+	public UploadBkpBDTask(JLabel labelTaskStatus, AppsBean appsBean, G2AppsManager g2AppsManager) {
 		this.appsBean = appsBean;
 		this.labelTaskStatus = labelTaskStatus;
 		this.timer = new Timer(true);
-		timer.schedule(new UploadBkpBDTimerTask(labelTaskStatus, appsBean), 5 * 1000);
+		timer.schedule(new UploadBkpBDTimerTask(labelTaskStatus, appsBean, g2AppsManager), 5 * 1000);
 	}
 }
 
@@ -43,19 +46,23 @@ class UploadBkpBDTimerTask extends TimerTask {
 	private String cleanCnpj;
 	Calendar calendar;
 	DropboxUploadFile dropUpload;
+	DeleteOldDBBkpsTask deleteOldDBTask;
+	private G2AppsManager g2AppsManager;
 	private static final Logger logger = (Logger) LogManager.getLogger(UploadBkpBDTimerTask.class.getName());
+	final DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 	
-	public UploadBkpBDTimerTask(JLabel labelTaskStatus, AppsBean appsBean) {
+	public UploadBkpBDTimerTask(JLabel labelTaskStatus, AppsBean appsBean, G2AppsManager g2AppsManager) {
 		this.appsBean = appsBean;
 		this.labelTaskStatus = labelTaskStatus;
 		this.cleanCnpj = this.appsBean.getClientCnpj().replaceAll("[^0-9]", "");
 		this.calendar = Calendar.getInstance();
-		this.dropUpload = new DropboxUploadFile();
+		this.g2AppsManager = g2AppsManager;
+		this.dropUpload = new DropboxUploadFile(g2AppsManager);
+		this.deleteOldDBTask = new DeleteOldDBBkpsTask(labelTaskStatus, appsBean, g2AppsManager);
 	}
 
 	@Override
 	public void run() {
-
 		String pathBkp = this.appsBean.getBackupPath();
 		System.out.println("Verificando Arquivos de Backup");
 		this.labelTaskStatus.setText("Verificando Arquivos de Backup");
@@ -78,7 +85,31 @@ class UploadBkpBDTimerTask extends TimerTask {
 					compressFile(folderYesterday.getPath(), dateYesterdayStr);
 			}
 		}
+		bkpByMonth(pathBkp);
 		labelTaskStatus.setText("");
+		this.deleteOldDBTask.deleteOldBkps();
+	}
+	
+	private void bkpByMonth(String pathBkp) {
+		File pathBkpFolder = new File(pathBkp);
+		List<File> filesByMonth = new ArrayList<File>();
+		if (pathBkpFolder.exists()) {
+			int countMonth = 1;
+			for (File file : pathBkpFolder.listFiles()) {
+				// TODO : converter data do arquivo para LocalDate, comparar mês com data atual
+				String dateStr = file.getName().substring(0,2) + "/" + file.getName().substring(2, 4) + "/" + 
+						file.getName().substring(4, file.getName().length());
+				LocalDate folderDate = LocalDate.parse(dateStr, dateTimeFormat);
+				if (folderDate.isBefore(LocalDate.now().minusMonths(countMonth))) {
+					countMonth++;
+					filesByMonth.add(file);
+				}
+				if (countMonth == 6)
+					break;
+			}
+			for (File fileByByMonth : filesByMonth)
+				compressFile(fileByByMonth.getPath(), fileByByMonth.getName());
+		}
 	}
 	
 	private void compressFile(String path, String dateStr) {
@@ -104,8 +135,9 @@ class UploadBkpBDTimerTask extends TimerTask {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				if (fileZip.length() > 0 && !this.dropUpload.hasFileUploaded(fileZip.getName()))
-					dropUpload.uploadFile(fileZip, labelTaskStatus, "/" + this.cleanCnpj + "/Backup/" + fileZip.getName());
+				if (fileZip.length() > 0)
+					dropUpload.uploadFile(fileZip, labelTaskStatus, "/" + this.cleanCnpj + "/Backup/" + this.g2AppsManager.getPathDate(new Date()) 
+						+ "/" + fileZip.getName());
 				fileZip.delete();
 			} catch (FileNotFoundException e1) {
 				e1.printStackTrace();
@@ -120,6 +152,7 @@ class UploadBkpBDTimerTask extends TimerTask {
 			files.add(fileBkp);
 		File fileBkpCaixa = new File(path + "\\" + "BackupCaixa.sql");
 		if (fileBkpCaixa.exists())
+			
 			files.add(fileBkpCaixa);
 		return files;
 	}

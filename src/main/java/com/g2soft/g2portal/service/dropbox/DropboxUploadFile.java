@@ -20,6 +20,7 @@ import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.v2.DbxClientV2;
 import com.dropbox.core.v2.files.UploadErrorException;
+import com.g2soft.g2portal.service.G2AppsManager;
 
 public class DropboxUploadFile {
 
@@ -29,8 +30,15 @@ public class DropboxUploadFile {
 	DbxClientV2 clientDropbox = new DbxClientV2(configDropbox, DROPBOX_ACCESS_TOKEN);
 	private static final Logger logger = (Logger) LogManager.getLogger(DropboxUploadFile.class.getName());
 	private static final String PATHLOG = "C:\\G2 Soft\\logs\\logG2Portal.txt";
+	private G2AppsManager g2AppsManager;
+	
+	public DropboxUploadFile(G2AppsManager g2AppsManager) {
+		this.g2AppsManager = g2AppsManager;
+	}
 	
 	public boolean uploadFile(File file, JLabel labelTaskStatus, String path) {
+		if (hasFileUploaded(file.getName()))
+			return false;
 		try {
 			InputStream in = new FileInputStream(file);
 			try {
@@ -83,15 +91,13 @@ public class DropboxUploadFile {
 	
 	public void uploadReports(JLabel labelTaskStatus, String cleanCnpj) {
 		File pathReports = new File("C:\\G2 Soft\\Relatorios");
+		if (this.g2AppsManager == null)
+			this.g2AppsManager = new G2AppsManager();
 		if (pathReports.exists() && pathReports.listFiles().length > 0) {
 			for (File file : pathReports.listFiles()) {
-				try {
-					if (!FileUtils.readFileToString(new File(PATHLOG), "UTF-8").contains(file.getName()))
-						uploadFile(file, labelTaskStatus, "/" + cleanCnpj + "/Relatorios/" + file.getName());
-				} catch (IOException e) {
-					logger.error(e);
-					e.printStackTrace();
-				}
+				if (hasFileUploaded(file.getName()))
+					uploadFile(file, labelTaskStatus, "/" + cleanCnpj + "/Relatorios/" + 
+							g2AppsManager.getPathDate(new Date()) + "/" + file.getName());
 			}
 		}
 	}

@@ -25,6 +25,7 @@ import com.dropbox.core.DbxDownloader;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.v2.DbxClientV2;
+import com.dropbox.core.v2.files.DownloadErrorException;
 import com.dropbox.core.v2.files.FileMetadata;
 import com.g2soft.g2portal.model.Apps;
 import com.g2soft.g2portal.service.G2AppsManager;
@@ -70,6 +71,21 @@ public class DropboxDownloadPackage {
 			}));
 		} catch (DbxException | IOException e) {
 			logger.error(e);
+		}
+	}
+	
+	public void downloadLog4jFileLog() {
+		try {
+			OutputStream out = null;
+			out = new FileOutputStream("C:\\G2 Soft\\logs\\log4j2.xml");
+			System.out.println("baixando arquivo de config de log");
+			clientDropbox.files().download("/log4j2.xml").download(out);
+		} catch (DownloadErrorException e) {
+			e.printStackTrace();
+		} catch (DbxException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 	

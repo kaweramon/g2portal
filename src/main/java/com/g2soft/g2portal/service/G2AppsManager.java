@@ -12,8 +12,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -40,6 +42,10 @@ public class G2AppsManager {
 	String ip = "";
 	private BufferedReader in;
 	private Apps appG2FromServer;
+	Calendar calendar;
+	SimpleDateFormat simpleDateFormat;
+	G2Tasks g2Tasks;
+	private boolean msgNetworkErrorConfigShowed = false;
 	
 	private List<String> listApps;
 	
@@ -49,6 +55,8 @@ public class G2AppsManager {
 		this.appsBean.setHostname();
 		setIp();
 		this.appG2FromServer = appsBean.getAppG2Server();
+		this.calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT-3"));
+		this.simpleDateFormat = new SimpleDateFormat("MMMM");
 	}
 	
 	public void closeApp(String appName) {
@@ -139,14 +147,13 @@ public class G2AppsManager {
 		}
 	}
 
-	private void writeChangesAfterUpdate(JLabel labelG2, JLabel labelPDV, JLabel labelG2Version, String pcType,
+	public void writeChangesAfterUpdate(JLabel labelG2, JLabel labelPDV, JLabel labelG2Version, String pcType,
 			String g2TempNameAndVersion, String pdvTempNamAndVersion) {
 		writeCurrentVersionOnConfig(appG2FromServer.getVersionUp());
 		writeTransferedVersion(appG2FromServer.getVersionUp());
 		changeG2Version(appG2FromServer.getVersionUp(), labelG2Version);
 		if (pcType == "Servidor" || pcType == "PDV")
 			writeUpdaterStatusOkOnConfig();
-		appsBean.updateAppVersion("G2", appG2FromServer.getVersionUp());
 		labelG2.setText(g2TempNameAndVersion);
 		labelG2.setForeground(Color.BLACK);
 		labelG2.setEnabled(true);
@@ -190,6 +197,7 @@ public class G2AppsManager {
 					System.out.println("Não tem versao no config");
 					return true;
 				} else {
+					// Versão do servidor é maior do que config
 					Integer currentVersionFromConfig = getCurrentVersionFromConfig();
 					if (currentVersionFromConfig != null && appG2FromServer.getVersionUp() > currentVersionFromConfig)
 						return true;
@@ -207,9 +215,8 @@ public class G2AppsManager {
 		logger.info("Verificando atualização no retaguarda");
 		Integer currentVersionFromConfig = getCurrentVersionFromConfig();
 		Apps g2App = this.appsBean.getAppByName("G2");
-		if (currentVersionFromConfig != null) {
+		if (currentVersionFromConfig != null)
 			return g2App.getCurrentVersion() > currentVersionFromConfig;
-		}
 		return false;
 	}
 
@@ -404,6 +411,15 @@ public class G2AppsManager {
 		return false;
 	}
 	
+	public Boolean isSpecialG2() {
+		try {
+			return FileUtils.readFileToString(new File("C:\\G2 Soft\\config.ini"), "UTF-8").contains("especial=G2");
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+		}
+		return false;
+	}
+	
 	public boolean isVersionDownloadGreatherThanCurrent() {
 		File fileConfig = new File("C:\\G2 Soft\\config.ini");
 		BufferedReader buffer;
@@ -486,7 +502,7 @@ public class G2AppsManager {
 		}
 	}
 	
-	public void transferFileNetworkToLocal(JLabel labelTaskStatus) {
+	public void transferPackageNetworkToLocalFileFolder(JLabel labelTaskStatus) {
 		String pathNetwork = "\\\\" + ip.replace(" ", "") + "\\G2 Soft\\Updater\\Files";
 		String pathLocal = "C:\\G2 Soft\\Updater";
 		File filePathNetwork = new File(pathNetwork);
@@ -501,6 +517,121 @@ public class G2AppsManager {
 		} catch (IOException e) {
 			logger.error("Erro ao transferir Pasta Files pela rede: " + e.getMessage());
 		}
+	}
+	
+	public void transferFileNetworkPdvAndRetaguarda(JLabel labelTaskStatus, 
+			JLabel labelG2, JLabel labelPDV, JLabel labelG2Version, String pcType,
+			String g2TempNameAndVersion, String pdvTempNamAndVersion) {
+		File filePathNetwork = new File("\\\\" + ip.replace(" ", "") + "\\G2 Soft\\Updater\\Files");
+		File filePathLocal = new File("C:\\G2 Soft");
+		
+		if (!filePathLocal.exists())
+			filePathLocal.mkdirs();
+		
+		try {
+			labelTaskStatus.setText("Copiando Arquivos pela rede, ip: " + ip);
+			FileUtils.copyDirectoryToDirectory(filePathNetwork, filePathLocal);
+			writeChangesAfterUpdate(labelG2, labelPDV, labelG2Version, pcType, 
+					g2TempNameAndVersion, pdvTempNamAndVersion);
+		} catch (IOException e) {
+			logger.error("Erro ao transferir Pasta Files pela rede: " + e.getMessage());
+		}
+	}
+	
+	public String getPathDate(Date dateToConvert) {
+		calendar.setTimeInMillis(dateToConvert.getTime());
+		return calendar.get(Calendar.YEAR) + "/"  + this.simpleDateFormat.format(calendar.getTime());
+	}
+	
+	public void deleteG2OldFiles() {
+		
+		File g2OnlineFile = new File("C:\\G2 Soft\\G2Online.exe");
+		if (g2OnlineFile.exists()) {
+			if (isAppRunning("G2Online"))
+				closeApp("G2Online");
+			g2OnlineFile.delete();
+		}
+			
+		File g2UpdateFile = new File("C:\\G2 Soft\\G2Update.exe");
+		if (g2UpdateFile.exists()) {
+			if (isAppRunning("G2Update"))
+				closeApp("G2Update");
+			g2UpdateFile.delete();
+		}
+			
+		File g2Gerenciador = new File("C:\\G2 Soft\\G2Gerenciador.exe");
+		if (g2Gerenciador.exists()) {
+			if (isAppRunning("G2Gerenciador"))
+				closeApp("G2Gerenciador");
+			g2Gerenciador.delete();
+		}
+		
+		File g2ChamadoFile = new File("C:\\G2 Soft\\G2Chamado.exe");
+		if (g2ChamadoFile.exists()) {
+			if (isAppRunning("G2Chamado"))
+				closeApp("G2Chamado");
+			g2ChamadoFile.delete();
+		}
+			
+		File g2AtualizaFile = new File("C:\\G2 Soft\\G2Atualiza.exe");
+		if (g2AtualizaFile.exists()) {
+			if (isAppRunning("G2Atualiza"))
+				closeApp("G2Atualiza");
+			g2AtualizaFile.delete();
+		}
+	}
+	
+	public boolean pdvHasUpdate(G2AppsManager g2AppsManager, JLabel labelTaskStatus, 
+			JLabel labelG2, JLabel labelPDV, JLabel labelG2Version, String pcType,
+			String g2TempNameAndVersion, String pdvTempNamAndVersion) {
+		Integer currentConfigVersion = getCurrentVersionFromConfig();
+		Integer currentVersionServerConfig = null;
+		try {
+			in = new BufferedReader(new FileReader("\\\\" + ip.replace(" ", "") + "\\G2 Soft\\config.ini"));
+			String line;
+			while ((line = in.readLine()) != null) {				
+				if (line.contains("versao_atual_g2")) {
+					currentVersionServerConfig = Integer.parseInt(line.substring(line.indexOf("=") + 1, line.length()));
+					continue;
+				}
+			}
+		} catch (FileNotFoundException e) {
+			logger.error(e);
+			showMsgErrorAndCallTaskUpdatePdv(e, g2AppsManager, labelTaskStatus, 
+					labelG2, labelPDV, labelG2Version, pcType, 
+					labelG2.getText(), labelPDV.getText());			
+		} catch (IOException e) {
+			logger.error(e);
+			showMsgErrorAndCallTaskUpdatePdv(e, g2AppsManager, labelTaskStatus, 
+					labelG2, labelPDV, labelG2Version, pcType, 
+					labelG2.getText(), labelPDV.getText());
+		}
+
+		if (currentConfigVersion != null && currentVersionServerConfig != null) {
+			return currentVersionServerConfig > currentConfigVersion;
+		}
+		return false;
+	}
+	
+	private void showMsgErrorAndCallTaskUpdatePdv(Exception e, G2AppsManager g2AppsManager,
+			JLabel labelTaskStatus, 
+			JLabel labelG2, JLabel labelPDV, JLabel labelG2Version, String pcType,
+			String g2TempNameAndVersion, String pdvTempNamAndVersion) {
+		if (!this.msgNetworkErrorConfigShowed) {
+			final JOptionPane pane = new JOptionPane("N\u00E3o foi poss\u00EDvel ler o arquivo de "
+					+ "configura\u00E7\u00E3o do servidor pela rede, "
+		    		+ "por favor entre em contato com o suporte (83) 3292-3886 \n"
+					+ "Motivo: " + e.getMessage());
+		    final JDialog dialog = pane.createDialog((JFrame)null, "Error de Conex\u00E3o");
+		    dialog.setLocation(200 ,200);
+		    dialog.setVisible(true);
+		    this.msgNetworkErrorConfigShowed = true;
+		}
+		
+	    if (this.g2Tasks == null)
+	    	this.g2Tasks = new G2Tasks();
+	    this.g2Tasks.updatePdvAfterNetworkError(g2AppsManager, labelG2, labelPDV, labelG2Version, 
+	    		labelTaskStatus);
 	}
 	
 }

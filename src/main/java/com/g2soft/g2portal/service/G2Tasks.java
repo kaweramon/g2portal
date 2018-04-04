@@ -19,6 +19,8 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Logger;
 
 import com.g2soft.g2portal.database.AppsBean;
 import com.g2soft.g2portal.model.Apps;
@@ -29,6 +31,8 @@ public class G2Tasks {
 	
 	Timer timer;
 	AppsBean appsBean;
+	
+	public G2Tasks() {}
 	
 	public G2Tasks(JPanel rightPanel) {
 		timer = new Timer(true);
@@ -45,6 +49,18 @@ public class G2Tasks {
 		timer.schedule(new CheckBilletIsLateTask(labelBillet), 35 * 1000);
 	}
 	
+	/***
+	 * Conecta com o Banco de dados e verifica atualização, repete o procedimento a 
+	 * cada duas horas
+	 * @param g2AppsManager
+	 * @param labelG2
+	 * @param labelPDV
+	 * @param labelG2Version
+	 * @param labelConnectionStatus
+	 * @param labelTaskStatus
+	 * @param labelBillet
+	 * @param labelPcType
+	 */
 	public void connectToDB(G2AppsManager g2AppsManager, JLabel labelG2, 
 			JLabel labelPDV, JLabel labelG2Version, JLabel labelConnectionStatus, JLabel labelTaskStatus, 
 			JLabel labelBillet, JLabel labelPcType) {
@@ -58,15 +74,23 @@ public class G2Tasks {
 		timer.schedule(new SetAppsVersionTask(labelG2, labelPDV), 6 * 1000);
 	}
 	
-	public void deleteG2Update(G2AppsManager g2AppsManager) {
+	public void updateLiberation(JLabel labelTaskStatus, G2AppsManager g2AppsManager) {
 		timer = new Timer(true);
-		timer.schedule(new DeleteG2Update(g2AppsManager), 40 * 1000);
+		timer.schedule(new UpdateLiberation(labelTaskStatus, g2AppsManager), 30 * 1000);
 	}
 	
-	public void updateLiberation(JLabel labelTaskStatus) {
+	public void downloadLogConfigFile() {
 		timer = new Timer(true);
-		timer.schedule(new UpdateLiberation(labelTaskStatus), 10 * 1000);
+		timer.schedule(new DownloadLogConfigFile(), 11 * 1000);
 	}
+	
+	public void updatePdvAfterNetworkError(G2AppsManager g2AppsManager, JLabel labelG2, 
+			JLabel labelPDV, JLabel labelG2Version, JLabel labelTaskStatus) {
+		timer = new Timer(true);
+		timer.schedule(new UpdatePdvAfterNetworkError(g2AppsManager, labelG2, labelPDV, labelG2Version, 
+				labelTaskStatus), 10 * 1000);
+	}
+	
 }
 
 class CheckServicesTask extends TimerTask {
@@ -210,6 +234,7 @@ class ConnectToDBTask extends TimerTask {
 	private JLabel labelPcType;
 	String pcType;
 	Timer timer;
+	private static final Logger logger = (Logger) LogManager.getLogger(ConnectToDBTask.class.getName());
 	
 	public ConnectToDBTask(G2AppsManager g2AppsManager, 
 			JLabel labelG2, JLabel labelPDV, JLabel labelG2Version, JLabel labelConnectionStatus,
@@ -236,12 +261,26 @@ class ConnectToDBTask extends TimerTask {
 		if (this.appsBean == null) {
 			this.appsBean = new AppsBean();
 		}
+		
 		pcType = g2AppsManager.getPcType();
 		labelPcType.setText(pcType);
 		System.out.println("PCTYPE: " + pcType);
-		if (pcType != null && (pcType == "Retaguarda")) {
-			labelG2.setEnabled(false);
-        	labelPDV.setEnabled(false);
+		if (pcType != null) {
+			if (pcType == "Retaguarda" || pcType == "PDV") {
+				labelG2.setEnabled(false);
+	        	labelPDV.setEnabled(false);
+			}
+			if (pcType == "PDV") {
+				if (g2AppsManager.pdvHasUpdate(g2AppsManager, labelTaskStatus, 
+						labelG2, labelPDV, labelG2Version, pcType, 
+						labelG2.getText(), labelPDV.getText())) {
+					g2AppsManager.transferFileNetworkPdvAndRetaguarda(labelTaskStatus, 
+							labelG2, labelPDV, labelG2Version, pcType, 
+							labelG2.getText(), labelPDV.getText());
+				}
+				labelG2.setEnabled(true);
+		    	labelPDV.setEnabled(true);
+			}
 		}
 		
 		if (!isConnect) {
@@ -255,11 +294,14 @@ class ConnectToDBTask extends TimerTask {
 			labelConnectionStatus.setForeground(Color.GREEN);
             this.setAppsVersions();
             labelTaskStatus.setText("Verificando se existe Atualiza\u00E7\u00E3o pendente...");
+            logger.info("Verificando se existe Atualiza\u00E7\u00E3o pendente...");
             
             if (pcType == "Retaguarda") {
             	if (!g2AppsManager.isAppRunning("Project1") && !g2AppsManager.isAppRunning("PDV")) {
-                	if (g2AppsManager.rearguardOrPDVHasUpdate())
-                		g2AppsManager.verifyUpdate(labelTaskStatus, labelG2, labelPDV, labelG2Version, pcType);
+                	if (g2AppsManager.rearguardOrPDVHasUpdate()) {
+                		g2AppsManager.transferFileNetworkPdvAndRetaguarda(labelTaskStatus, labelG2, labelPDV, 
+                				labelG2Version, pcType, labelG2.getText(), labelPDV.getText());
+                	}
             	}
             }
             
@@ -267,8 +309,6 @@ class ConnectToDBTask extends TimerTask {
             	if (g2AppsManager.isPendingTransfer()) {
                 	if (!g2AppsManager.isAppRunning("Project1") && !g2AppsManager.isAppRunning("PDV")) {
                 		g2AppsManager.verifyUpdate(labelTaskStatus, labelG2, labelPDV, labelG2Version, pcType);
-                		timer.cancel();
-                		timer.purge();
                 	}
                 } else if (g2AppsManager.projectHasUpdate()) {
         			Apps appG2 = appsBean.getAppG2Server();
@@ -280,29 +320,10 @@ class ConnectToDBTask extends TimerTask {
         				writeUpdaterStatusOnConfig();
         				timer.schedule(new CheckProjectOrPDVToTransferFiles(g2AppsManager, 
         						labelTaskStatus, labelG2, labelPDV, labelG2Version, pcType), 0, 10 * 1000);
-        			} else {
+        			} else
         				g2AppsManager.verifyUpdate(labelTaskStatus, labelG2, labelPDV, labelG2Version, pcType);
-        				timer.cancel(); 
-        				timer.purge();
-        			}
         		}
             }
-            
-            if (pcType == "PDV") { 
-            	if (g2AppsManager.isPendingTransfer()) {
-            		if (!g2AppsManager.isAppRunning("Project1") && !g2AppsManager.isAppRunning("PDV"))
-            			g2AppsManager.verifyUpdate(labelTaskStatus, labelG2, labelPDV, labelG2Version, pcType);
-            	} else if (g2AppsManager.rearguardOrPDVHasUpdate()) {
-            		if (!g2AppsManager.isAppRunning("Project1") && !g2AppsManager.isAppRunning("PDV")) {
-            			g2AppsManager.verifyUpdate(labelTaskStatus, labelG2, labelPDV, labelG2Version, pcType);
-            		} else {
-            			writeUpdaterStatusOnConfig();
-            			g2AppsManager.deleteFilesFolder(labelTaskStatus);
-            			g2AppsManager.transferFileNetworkToLocal(labelTaskStatus);
-            		}
-            	}
-            }
-            
     		this.labelTaskStatus.setText("");
     		
     	} else {
@@ -331,6 +352,7 @@ class ConnectToDBTask extends TimerTask {
 				return true;
 			}
 		} catch (IOException e) {
+			logger.error(e);
 			e.printStackTrace();
 		}
 		return false;
@@ -490,67 +512,113 @@ class SetAppsVersionTask extends TimerTask {
 	
 }
 
+class UpdateLiberation extends TimerTask {
 
-class DeleteG2Update extends TimerTask {
-
+	AppsBean appsBean;
+	JLabel labelTaskStatus;
 	G2AppsManager g2AppsManager;
 	
-	public DeleteG2Update(G2AppsManager g2AppsManager) {
+	public UpdateLiberation(JLabel labelTaskStatus, G2AppsManager g2AppsManager) {
+		this.labelTaskStatus = labelTaskStatus;
 		this.g2AppsManager = g2AppsManager;
 	}
 	
 	@Override
 	public void run() {
-		if (!g2AppsManager.isAppRunning("G2Update.exe")) {
-			File fileG2Update = new File("C:\\G2 Soft\\G2Update.exe");
-			if (fileG2Update.exists()) {
-				System.out.println("Deletando G2Update.exe");
-				fileG2Update.delete();
+		System.out.println("Chamando task para atualizar liberação");
+		if (this.appsBean == null)
+			this.appsBean = new AppsBean();
+		
+		if (!g2AppsManager.isSpecialG2()) {
+			String clientCnpj = this.appsBean.getClientCnpj();
+			
+			if (clientCnpj != null && clientCnpj.length() > 0) {
+				Liberation liberation = this.appsBean.getLiberationByCnpj(clientCnpj);
+				System.out.println("Liberacao no Servidor G2:" + liberation.toString());
+				if (liberation != null) {
+					try {
+						labelTaskStatus.setText("Atualizando Liberação...");
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					System.out.println("ID Cliente: " + liberation.getClientId());
+					if (liberation.getClientId() != null) {
+						Long liberationId = this.appsBean.hasLiberationIdCliente(liberation.getClientId());
+						if (liberationId != null) {
+							System.out.println("Deletando liberacao: " + liberation.getClientId());
+							this.appsBean.deleteOldLiberation(liberationId);
+							System.out.println("Atualizando Liberacao, ID Cliente:" + liberation.getClientId());
+							this.appsBean.updateLiberation(liberation, liberation.getClientId());
+						} else {
+							System.out.println("Inserindo Liberacao, ID Cliente:" + liberation.getClientId());
+							this.appsBean.insertLiberation(liberation);
+						}
+						try {
+							System.out.println("Atualizando código do cliente na tabela configuracoes: " 
+									+ liberation.getClientId());
+							labelTaskStatus.setText("Atualizando c\u00F3digo do cliente na tabela configurac\u00F5es");
+							this.appsBean.updateConfigInternalClientCode(liberation.getClientId());
+							Thread.sleep(2000);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
+						
+					labelTaskStatus.setText("");
+				}
 			}
+		}
+		
+	}
+	
+}
+
+class DownloadLogConfigFile extends TimerTask {
+
+	@Override
+	public void run() {
+		DropboxDownloadPackage dropDownload = new DropboxDownloadPackage();
+		File fileConfigLog = new File("C:\\G2 Soft\\logs\\log4j2.xml");
+		if (!fileConfigLog.exists()) {
+			dropDownload.downloadLog4jFileLog();
 		}
 	}
 	
 }
 
-class UpdateLiberation extends TimerTask {
+class UpdatePdvAfterNetworkError extends TimerTask {
 
-	AppsBean appsBean;
+	G2AppsManager g2AppsManager; 
+	JLabel labelG2; 
+	JLabel labelPDV; 
+	JLabel labelG2Version; 
 	JLabel labelTaskStatus;
 	
-	public UpdateLiberation(JLabel labelTaskStatus) {
+	public UpdatePdvAfterNetworkError(G2AppsManager g2AppsManager, JLabel labelG2, 
+			JLabel labelPDV, JLabel labelG2Version, JLabel labelTaskStatus) {
+		this.g2AppsManager = g2AppsManager;
+		this.labelG2 = labelG2;
+		this.labelPDV = labelPDV;
+		this.labelG2Version = labelG2Version;
 		this.labelTaskStatus = labelTaskStatus;
 	}
 	
 	@Override
 	public void run() {
-		
-		if (this.appsBean == null)
-			this.appsBean = new AppsBean();
-		
-		Integer liberationCount = this.appsBean.getLiberationRegisterCounts();
-		Integer liberationLastId = this.appsBean.getLiberationLastId();
-		if (liberationCount != null && liberationCount > 1 && liberationLastId != null)
-			this.appsBean.deleteOldLiberation(liberationLastId);
-		
-		String clientCnpj = this.appsBean.getClientCnpj();
-		
-		if (clientCnpj != null && clientCnpj.length() > 0) {
-			Liberation liberation = this.appsBean.getLiberationByCnpj(clientCnpj);
-			if (liberation != null && liberation.getSystemLiberationDate() != null 
-					&& liberation.getOperator() != null) {
-				try {
-					labelTaskStatus.setText("Atualizando Liberação...");
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				if (liberationLastId != null)
-					this.appsBean.updateLiberation(liberation, liberationLastId);
-				labelTaskStatus.setText("");
-			}
+		if (g2AppsManager == null)
+			g2AppsManager = new G2AppsManager();
+		String pcType = g2AppsManager.getPcType();
+		if (g2AppsManager.pdvHasUpdate(g2AppsManager, labelTaskStatus, 
+				labelG2, labelPDV, labelG2Version, pcType, 
+				labelG2.getText(), labelPDV.getText())) {
+			labelG2.setEnabled(false);
+			labelPDV.setEnabled(false);
+			g2AppsManager.transferFileNetworkPdvAndRetaguarda(labelTaskStatus, 
+					labelG2, labelPDV, labelG2Version, pcType, 
+					labelG2.getText(), labelPDV.getText());
 		}
+		labelG2.setEnabled(true);
+    	labelPDV.setEnabled(true);
 	}
-	
 }
-
-

@@ -84,16 +84,17 @@ public class MainMenu implements MouseListener {
 		mainJFrame.setLayout(null);
 		mainJFrame.setVisible(true);
 		g2Tasks = new G2Tasks(footerPanel);
+		System.out.println("Verificando Apps G2 para deletar");
+		g2AppsManager.deleteG2OldFiles();
 		g2Tasks.connectToDB(g2AppsManager, labelG2, labelPDV, labelG2Version, 
 				labelConnectionStatus, labelTaskStatus, labelBillet, labelPcType);
 		new DeleteTempFilesTask(labelTaskStatus, g2AppsManager);
 		g2Tasks.checkIsBilletLate(labelBillet);
-		g2Tasks.deleteG2Update(g2AppsManager);
+		g2Tasks.downloadLogConfigFile();
 		if (!g2AppsManager.isServerG2())
-			g2Tasks.updateLiberation(labelTaskStatus);
-		UploadNfeTask uploadNfeTask = new UploadNfeTask(labelTaskStatus);
+			g2Tasks.updateLiberation(labelTaskStatus, g2AppsManager);
+		UploadNfeTask uploadNfeTask = new UploadNfeTask(labelTaskStatus, g2AppsManager);
 		uploadNfeTask.uploadNfeXmls();
-//		uploadNfeTask.uploadNFCeXmls();
 	}
 	
 	private void createHeaderPane() {
@@ -221,32 +222,23 @@ public class MainMenu implements MouseListener {
 		radioButtonPDV.setName("radioButtonPDV");
 		radioButtonPDV.setBounds(210 + insets.left, 3 + insets.top, 55, size.height + 10);
 		
-		JRadioButton radioButtonG2Online = new JRadioButton("G2 Online");
-		radioButtonG2Online.setName("radioButtonG2Online");
-		radioButtonG2Online.setBounds(260 + insets.left, 3 + insets.top, 85, size.height + 10);
+		JRadioButton radioButtonG2NfeMonitor = new JRadioButton("G2 Nfe Monitor");
+		radioButtonG2NfeMonitor.setName("radioButtonG2NfeMonitor");
+		radioButtonG2NfeMonitor.setBounds(260 + insets.left, 3 + insets.top, 120, 
+				size.height + 10);
 		
 		JRadioButton radioButtonG2Transmissao = new JRadioButton("G2 Transmiss\u00E3o");
 		radioButtonG2Transmissao.setName("radioButtonG2Transmissao");
-		radioButtonG2Transmissao.setBounds(340 + insets.left, 3 + insets.top, 120, 
+		radioButtonG2Transmissao.setBounds(380 + insets.left, 3 + insets.top, 120, 
 				size.height + 10);
 		
-		JRadioButton radioButtonG2NfeMonitor = new JRadioButton("G2 Nfe Monitor");
-		radioButtonG2NfeMonitor.setName("radioButtonG2NfeMonitor");
-		radioButtonG2NfeMonitor.setBounds(460 + insets.left, 3 + insets.top, 110, 
-				size.height + 10);
-		
-		// Segunda Linha de ServiÃ§os
+		// Segunda Linha de Serviços
 		JRadioButton radioButtonG2Recepcao = new JRadioButton("G2 Recep\u00E7\u00E3o");
 		radioButtonG2Recepcao.setName("radioButtonG2Recepcao");
-		radioButtonG2Recepcao.setBounds(100 + insets.left, 23 + insets.top, 110, 
-				size.height + 9);
+		radioButtonG2Recepcao.setBounds(500 + insets.left, 3 + insets.top, 110, 
+				size.height + 10);
 		
-		JRadioButton radioButtonG2Update = new JRadioButton("G2 Update");
-		radioButtonG2Update.setName("radioButtonG2Update");
-		radioButtonG2Update.setBounds(210 + insets.left, 23 + insets.top, 110, 
-				size.height + 9);
-		
-		JLabel labelPortalVersion = new JLabel("Vers\u00E3o 0.1.4");
+		JLabel labelPortalVersion = new JLabel("Vers\u00E3o 0.2.0");
 		labelPortalVersion.setBounds(685 + insets.left, 35 + insets.top, 100, size.height + 10);
 		
 		labelConnectionStatus.setBounds(685 + insets.left, 15 + insets.top, 90, size.height + 10);
@@ -270,11 +262,9 @@ public class MainMenu implements MouseListener {
 		footerPanel.add(labelServices, JPanel.LEFT_ALIGNMENT);
 		footerPanel.add(radioButtonG2, JPanel.LEFT_ALIGNMENT);
 		footerPanel.add(radioButtonPDV, JPanel.LEFT_ALIGNMENT);
-		footerPanel.add(radioButtonG2Online, JPanel.LEFT_ALIGNMENT);
 		footerPanel.add(radioButtonG2Transmissao, JPanel.LEFT_ALIGNMENT);
 		footerPanel.add(radioButtonG2NfeMonitor, JPanel.LEFT_ALIGNMENT);
 		footerPanel.add(radioButtonG2Recepcao, JPanel.LEFT_ALIGNMENT);
-		footerPanel.add(radioButtonG2Update, JPanel.LEFT_ALIGNMENT);
 		footerPanel.add(labelPortalVersion, JPanel.RIGHT_ALIGNMENT);		
 		footerPanel.add(labelConnectionStatus);
 		footerPanel.add(labelStatus);

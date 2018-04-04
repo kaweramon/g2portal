@@ -5,10 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 
-import com.g2soft.g2portal.database.AppsBean;
 import com.g2soft.g2portal.model.Apps;
 import com.g2soft.g2portal.ui.MainMenu;
 
@@ -50,7 +48,6 @@ public class Main extends Application {
     private static final int SPLASH_HEIGHT = 227;
     final Stage initStage = new Stage();
 	
-	private static final Logger logger = (Logger) LogManager.getLogger(Main.class.getName());
 	public static final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
 	
 	public static void main(String[] args) {
@@ -88,12 +85,10 @@ public class Main extends Application {
 	@Override
 	public void start(Stage primaryStage) throws Exception {
 		final Task<ObservableList<Apps>> friendTask = new Task<ObservableList<Apps>>() {
-            @SuppressWarnings("restriction")
+
 			@Override
             protected ObservableList<Apps> call() throws InterruptedException {
-            	AppsBean appsBean = new AppsBean();
             	apps = FXCollections.<Apps>observableArrayList();
-            	
             	
             	updateMessage("Carregando . . .");
                 Thread.sleep(400);
@@ -130,7 +125,6 @@ public class Main extends Application {
 			apps.add(appsObservableList.get().get(i));
 		}
 		
-//		MainMenu mainMenu = new MainMenu((List<Apps>) apps);
 		MainMenu mainMenu = new MainMenu();
 		mainMenu.drawMainMenu();
     }

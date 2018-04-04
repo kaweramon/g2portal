@@ -13,15 +13,17 @@ public class UploadReportFilesTask {
 	JLabel labelTaskStatus;
 	AppsBean appsBean;
 	Timer timer;
+	G2AppsManager g2AppsManager;
 	
-	public UploadReportFilesTask(JLabel labelTaskStatus) {
+	public UploadReportFilesTask(JLabel labelTaskStatus, G2AppsManager g2AppsManager) {
 		this.labelTaskStatus = labelTaskStatus;
 		this.appsBean = new AppsBean();
+		this.g2AppsManager = g2AppsManager;
 	}
 	
 	public void uploadReports() {
 		this.timer = new Timer(true);
-		this.timer.schedule(new UploadReportFilesTimerTask(labelTaskStatus, appsBean), 5 * 1000);
+		this.timer.schedule(new UploadReportFilesTimerTask(labelTaskStatus, appsBean, g2AppsManager), 5 * 1000);
 	}
 }
 
@@ -31,12 +33,12 @@ class UploadReportFilesTimerTask extends TimerTask {
 	AppsBean appsBean;
 	DropboxUploadFile dropUpload;
 	UploadSpedFilesTask uploadSpedTask;
-	
-	public UploadReportFilesTimerTask(JLabel labelTaskStatus, AppsBean appsBean) {
+
+	public UploadReportFilesTimerTask(JLabel labelTaskStatus, AppsBean appsBean, G2AppsManager g2AppsManager) {
 		this.labelTaskStatus = labelTaskStatus;
 		this.appsBean = appsBean;
-		this.dropUpload = new DropboxUploadFile();
-		this.uploadSpedTask = new UploadSpedFilesTask(labelTaskStatus, appsBean);
+		this.dropUpload = new DropboxUploadFile(g2AppsManager);
+		this.uploadSpedTask = new UploadSpedFilesTask(labelTaskStatus, appsBean, g2AppsManager);
 	}
 	
 	@Override

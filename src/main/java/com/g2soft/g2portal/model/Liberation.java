@@ -12,7 +12,13 @@ public class Liberation {
 	private Date tempLiberationDate;
 	private String operator;
 	private String obs;
-	private Integer clientId;
+	@Override
+	public String toString() {
+		return "Liberation [id=" + id + ", clientSystemVersion=" + clientSystemVersion + ", systemLiberationDate="
+				+ systemLiberationDate + ", verificationDate=" + verificationDate + ", tempLiberationDate="
+				+ tempLiberationDate + ", operator=" + operator + ", obs=" + obs + ", clientId=" + clientId + "]";
+	}
+	private Long clientId;
 	
 	public long getId() {
 		return id;
@@ -56,10 +62,10 @@ public class Liberation {
 	public void setObs(String obs) {
 		this.obs = obs;
 	}
-	public Integer getClientId() {
+	public Long getClientId() {
 		return clientId;
 	}
-	public void setClientId(Integer clientId) {
+	public void setClientId(Long clientId) {
 		this.clientId = clientId;
 	}
 	

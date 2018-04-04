@@ -20,22 +20,24 @@ public class DeleteNfeAndNfceCanceledTask {
 	Timer timer;
 	JLabel labelTaskStatus;
 	AppsBean appsBean;
+	G2AppsManager g2AppsManager;
 	
 	private static final Logger logger = (Logger) LogManager.getLogger(DeleteNfeAndNfceCanceledTask.class.getName());
 	
-	public DeleteNfeAndNfceCanceledTask(JLabel labelTaskStatus, AppsBean appsBean) {
+	public DeleteNfeAndNfceCanceledTask(JLabel labelTaskStatus, AppsBean appsBean, G2AppsManager g2AppsManager) {
 		this.timer = new Timer(true);
 		this.labelTaskStatus = labelTaskStatus;
 		this.appsBean = appsBean;
+		this.g2AppsManager = g2AppsManager;
 	}
 	
 	public void deleteCanceledNfes() {
-		timer.schedule(new DeleteNfeCanceledTimerTask(appsBean, labelTaskStatus, logger), 10 * 1000);
+		timer.schedule(new DeleteNfeCanceledTimerTask(appsBean, labelTaskStatus, logger, g2AppsManager), 10 * 1000);
 	}
 	
 	public void deleteCanceledNFCes() {
 		this.timer = new Timer(true);
-		this.timer.schedule(new DeleteNfceCanceledTimerTask(appsBean, labelTaskStatus, logger), 10 * 1000);
+		this.timer.schedule(new DeleteNfceCanceledTimerTask(appsBean, labelTaskStatus, logger, g2AppsManager), 10 * 1000);
 	}
 }
 
@@ -45,16 +47,19 @@ class DeleteNfeCanceledTimerTask extends TimerTask {
 	JLabel labelTaskStatus;
 	Calendar calendar;
 	String cleanCnpj;
-	Logger logger;
+	Logger logger;	
 	DeleteNfeAndNfceCanceledTask deleteNfeAndNfceCanceledTask;
+	G2AppsManager g2AppsManager;
 	
-	public DeleteNfeCanceledTimerTask(AppsBean appsBean, JLabel labelTaskStatus, Logger logger) {
+	
+	public DeleteNfeCanceledTimerTask(AppsBean appsBean, JLabel labelTaskStatus, Logger logger, G2AppsManager g2AppsManager) {
 		this.appsBean = appsBean;
 		this.labelTaskStatus = labelTaskStatus;
 		this.calendar =  Calendar.getInstance();
 		this.cleanCnpj = this.appsBean.getClientCnpj().replaceAll("[^0-9]", "");
+		this.g2AppsManager = g2AppsManager;
 		this.logger = logger;
-		deleteNfeAndNfceCanceledTask = new DeleteNfeAndNfceCanceledTask(labelTaskStatus, appsBean);
+		deleteNfeAndNfceCanceledTask = new DeleteNfeAndNfceCanceledTask(labelTaskStatus, appsBean, g2AppsManager);
 	}
 	
 	@Override
@@ -67,25 +72,13 @@ class DeleteNfeCanceledTimerTask extends TimerTask {
 		if (listSightSaleCanceled != null && listSightSaleCanceled.size() > 0) {
 			for (SightSale sightSale : listSightSaleCanceled)	{
 				this.calendar.setTime(sightSale.getSellDate());
-				dropDeleteFile.deleteFile(getDropboxPath(sightSale), labelTaskStatus);
+				dropDeleteFile.deleteFile("/" + this.cleanCnpj + "/NFE/" + 
+						this.g2AppsManager.getPathDate(sightSale.getSellDate()) + "/" + 
+						sightSale.getNfeKey() + "-procNfe.xml", labelTaskStatus);
 			}
 		}
 		labelTaskStatus.setText("");
 		deleteNfeAndNfceCanceledTask.deleteCanceledNFCes();
-	}
-	
-	private String getDropboxPath(SightSale sightSale) {
-		String path = "";
-		if (sightSale.getSellDate() != null && sightSale.getNfeKey() != null) {
-			String month = "";
-			if (calendar.get(Calendar.MONTH) < 10)
-				month = "0" + (calendar.get(Calendar.MONTH) + 1);
-			else 
-				month += (calendar.get(Calendar.MONTH) + 1);
-			path = "/" + this.cleanCnpj + "/" + month + calendar.get(Calendar.YEAR) + "/" + 
-				sightSale.getNfeKey() + "-procNfe.xml";
-		}
-		return path;
 	}
 	
 }
@@ -98,14 +91,16 @@ class DeleteNfceCanceledTimerTask extends TimerTask {
 	Logger logger;
 	Calendar calendar;
 	UploadReportFilesTask uploadReportsTask;
+	G2AppsManager g2AppsManager;
 	
-	public DeleteNfceCanceledTimerTask(AppsBean appsBean, JLabel labelTaskStatus, Logger logger) {
+	public DeleteNfceCanceledTimerTask(AppsBean appsBean, JLabel labelTaskStatus, Logger logger, G2AppsManager g2AppsManager) {
 		this.appsBean = appsBean;
 		this.labelTaskStatus = labelTaskStatus;
 		this.logger = logger;
 		this.calendar = Calendar.getInstance();
 		this.cleanCnpj = appsBean.getClientCnpj().replaceAll("[^0-9]", "");
-		this.uploadReportsTask = new UploadReportFilesTask(labelTaskStatus);
+		this.g2AppsManager = g2AppsManager;
+		this.uploadReportsTask = new UploadReportFilesTask(labelTaskStatus, g2AppsManager);
 	}
 	
 	@Override
@@ -116,26 +111,11 @@ class DeleteNfceCanceledTimerTask extends TimerTask {
 		DropboxDeleteFile dropDeleteFile = new DropboxDeleteFile();
 		if (listQuickSellCanceled != null && listQuickSellCanceled.size() > 0) {
 			for (QuickSell quickSell : listQuickSellCanceled)
-				dropDeleteFile.deleteFile(getDropBoxQuickSellPath(quickSell), labelTaskStatus);
+				dropDeleteFile.deleteFile("/" + this.cleanCnpj + "/NFCe/" + 
+						this.g2AppsManager.getPathDate(quickSell.getSellDate()) + ".xml", labelTaskStatus);
 		}
 		labelTaskStatus.setText("");
 		this.uploadReportsTask.uploadReports();
-	}
-	
-	private String getDropBoxQuickSellPath(QuickSell quickSell) {
-		String path = "";
-		
-		if (quickSell.getSellDate() != null && quickSell.getNfceKey() != null) {
-			String month = "";
-			this.calendar.setTime(quickSell.getSellDate());
-			if (calendar.get(Calendar.MONTH) < 10)
-				month = "0" + (calendar.get(Calendar.MONTH) + 1);
-			else 
-				month += (calendar.get(Calendar.MONTH) + 1);
-			path = "/" + this.cleanCnpj + "/NFCe_XML/" + month + calendar.get(Calendar.YEAR) + "/" + quickSell.getNfceKey() + ".xml";
-		}
-		
-		return path;
 	}
 	
 }
