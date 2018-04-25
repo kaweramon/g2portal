@@ -10,7 +10,7 @@
 	<property name="main-class"  value="com.g2soft.g2portal.Main"/>
 	<property name="lib.dir"     value="lib"/>
 	<property name="certificate.dir" value="resources/certificate/g2soft.p12"/>
-	<property name="version"     value="0.2.0"/>
+	<property name="version"     value="0.2.3"/>
 
 	<path id="classpath">
 		<fileset dir="${lib.dir}" includes="**/*.jar"/>
@@ -89,13 +89,14 @@
 				keypass="270544" signedjar="${signed.dir}/${ant.project.name}__V${version}.jar">
 		</signjar>
 		
+		<!-- 
 		<signjar jar="${lib.dir}/json-simple-1.1.1.jar" 
 						alias="g2soft" 
 						storetype="pkcs12" storepass="270544" 
 						keystore="${certificate.dir}" 
 						keypass="270544" signedjar="${signed.dir}/json-simple-1.1.1.jar">
 		</signjar>
-		
+		-->
 		<!--
 		<signjar jar="${lib.dir}/httpcore-4.4.6.jar" 
 				alias="g2soft" 

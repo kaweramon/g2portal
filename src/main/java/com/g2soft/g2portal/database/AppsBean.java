@@ -122,14 +122,14 @@ public class AppsBean {
 		return false;
 	}
 
-	public boolean connectToDBG2Mensagem() {
+	public boolean connectToDBG2Mensagem(boolean isPDV) {
 		try {
 			Class.forName(JDBC_DRIVER);
 			if (this.db_url == null || this.db_url.isEmpty()) {
 				setHostname();
 			}
 			if (user_password.length() > 0) {	
-				this.connectionG2Mensagem = DriverManager.getConnection(getHostNameG2Mensagem(), USER, user_password);
+				this.connectionG2Mensagem = DriverManager.getConnection(getHostNameG2Mensagem(isPDV), USER, user_password);
 				return true;
 			}
 		} catch (ClassNotFoundException e) {
@@ -146,15 +146,23 @@ public class AppsBean {
 	
 	
 	public void createAppsTable() {
+		
+		verifyToOpenConnection();
+		
 		try {
 			this.statement = connection.prepareStatement(CREATE_TABLE_APPS_IF_NOT_EXISTS);
 			statement.executeUpdate();
 		} catch (SQLException e) {
 			logger.error(e.getMessage());
+		} finally {
+			closeConnections();
 		}
 	}
 	
 	public List<Apps> getApps() {
+		
+		verifyToOpenConnection();
+		
 		List<Apps> listApps = new ArrayList<>();
 		try {
 			this.statement = connection.prepareStatement(SQL_SELECT_APPS);
@@ -171,10 +179,11 @@ public class AppsBean {
 				if (apps != null)
 					listApps.add(apps);
 			}
-			
 		} catch (SQLException e) {
 			logger.error(e.getMessage());
 			e.printStackTrace();
+		} finally {
+			closeConnections();
 		}
 		return listApps;
 	}
@@ -248,8 +257,9 @@ public class AppsBean {
 		Apps projectApp = new Apps();
 		
 		try {
-			if (connection == null)
-				connectToDB();
+			
+			verifyToOpenConnection();
+			
 			this.statement = connection.prepareStatement(SQL_SELECT_APPS_BY_NAME);
 			this.statement.setString(1, appName);
 			this.resultSet = statement.executeQuery();
@@ -262,10 +272,11 @@ public class AppsBean {
 				projectApp.setAddedDate(resultSet.getDate("data_add"));
 				projectApp.setLink(resultSet.getString("link_download"));
 			}
-			
 		} catch (SQLException e) {
 			logger.error(e.getMessage());
 			System.out.println(e.getMessage());
+		} finally {
+			closeConnections();
 		}
 		
 		return projectApp;
@@ -304,13 +315,15 @@ public class AppsBean {
 			return;
 		String sql = UPDATE_VERSION_APPS  + appVersion + " WHERE nome = '" + appName + "'";
 		try {
-			if (connection == null)
-				connectToDB();
+			verifyToOpenConnection();
+			
 			this.statement = this.connection.prepareStatement(sql);
 			this.statement.executeUpdate();
 		} catch (SQLException e) {
 			System.out.println(e.getMessage());
 			logger.error(e.getMessage());
+		} finally {
+			closeConnections();
 		}
 	}
 	
@@ -337,20 +350,15 @@ public class AppsBean {
 		}
 	}
 	
-	public String getHostNameG2Mensagem() {
-		String hostname = "";
+	public void setHostnamePDV() {
 		try {
 			BufferedReader in = new BufferedReader(new FileReader("C:\\G2 Soft\\config.ini"));
-			String content = FileUtils.readFileToString(new File("C:\\G2 Soft\\config.ini"), "UTF-8");
-			if (content.contains("especial=G2"))
-				user_password = "paulo85";
-			else 
-				user_password = "Shispirito85";
+			user_password = "Shispirito85";	
 			String line;
 			while((line = in.readLine()) != null) {
-			    if (line.contains("hostname")) {
-			    	hostname = "jdbc:mysql://" + line.substring(line.indexOf("=") + 1, line.length()) 
-			    		+ ":3306/g2mensagem?connectTimeout=10000";
+			    if (line.contains("hostnamepdv")) {
+			    	this.db_url = "jdbc:mysql://" + line.substring(line.indexOf("=") + 1, line.length()) 
+			    		+ ":3306/bancr?connectTimeout=10000";
 			    	break;
 			    }
 			}
@@ -358,6 +366,41 @@ public class AppsBean {
 		} catch (IOException e) {
 			logger.error(e.getMessage());
 			e.printStackTrace();
+		}
+	}
+	
+	public String getHostNameG2Mensagem(boolean isPDV) {
+		String hostname = "";
+		try {
+			BufferedReader in = new BufferedReader(new FileReader("C:\\G2 Soft\\config.ini"));
+			String content = FileUtils.readFileToString(new File("C:\\G2 Soft\\config.ini"), "UTF-8");
+			if (content.contains("especial=G2") && !isPDV)
+				user_password = "paulo85";
+			else 
+				user_password = "Shispirito85";
+			String line;
+			while((line = in.readLine()) != null) {
+				if (!isPDV) {
+					if (line.contains("hostname")) {
+				    	hostname = "jdbc:mysql://" + line.substring(line.indexOf("=") + 1, line.length()) 
+				    		+ ":3306/g2mensagem?connectTimeout=10000";
+				    	break;
+				    }
+				} else {
+					if (line.contains("hostnamepdv")) {
+				    	hostname = "jdbc:mysql://" + line.substring(line.indexOf("=") + 1, line.length()) 
+				    		+ ":3306/g2mensagem?connectTimeout=10000";
+				    	break;
+				    }
+				}
+			    
+			}
+			in.close();
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+			e.printStackTrace();
+		} finally {
+			closeConnectionsG2Mensagem();
 		}
 		
 		return hostname;
@@ -367,8 +410,7 @@ public class AppsBean {
 		
 		String clientCnpj = "";
 		
-		if (connection == null)
-			connectToDB();
+		verifyToOpenConnection();
 		
 		try {
 			this.statement = connection.prepareStatement(SELECT_CAD_USUARIO);
@@ -380,6 +422,8 @@ public class AppsBean {
 		} catch (SQLException e) {
 			logger.error(e.getMessage());
 			e.printStackTrace();
+		} finally {
+			closeConnections();
 		}
 		
 		return clientCnpj;
@@ -403,7 +447,6 @@ public class AppsBean {
 			}
 			
 			InputStream inputStream = conn.getInputStream();			
-//			JsonParser jsonParser = Json.createParser(inputStream);
 			
 			JSONParser jsonParser = new JSONParser();
 			try {
@@ -436,42 +479,6 @@ public class AppsBean {
 				e.printStackTrace();
 			}
 			
-			/*while(jsonParser.hasNext()) {
-				Event e = jsonParser.next();
-				if (e == Event.KEY_NAME) {
-                    switch (jsonParser.getString()) {
-                        case "id":
-                        	jsonParser.next();
-                        	liberation.setId(jsonParser.getInt());
-                            break;
-                        case "systemLiberationDate":
-                        	jsonParser.next();
-                        	Timestamp timeStamp = new Timestamp(jsonParser.getLong());
-                        	liberation.setSystemLiberationDate(new Date(timeStamp.getTime()));
-                            break;
-                        case "verificationDate":
-                        	jsonParser.next();
-                        	Timestamp timeStampVerificationDate = new Timestamp(jsonParser.getLong());
-                        	liberation.setVerificationDate(new Date(timeStampVerificationDate.getTime()));
-                            break;
-                        case "tempLiberationDate":
-                        	jsonParser.next();
-                        	
-                        	Timestamp timeStampTempLiberationDate = new Timestamp(jsonParser.getLong());
-                        	liberation.setTempLiberationDate(new Date(timeStampTempLiberationDate.getTime()));
-                        	break;
-                        case "obs":
-                        	jsonParser.next();
-                        	liberation.setObs(jsonParser.getString());
-                        	break;
-                        case "operator":
-                        	jsonParser.next();
-                        	liberation.setOperator(jsonParser.getString());
-                        	break;
-                    }
-                }
-			}*/
-			
 			conn.disconnect();
 			
 		} catch (MalformedURLException e) {
@@ -480,6 +487,8 @@ public class AppsBean {
 		} catch (IOException e) {
 			logger.error(e.getMessage());
 			System.out.println(e);
+		} finally {
+			closeConnections();
 		}
 		
 		return liberation;
@@ -487,8 +496,8 @@ public class AppsBean {
 	
 	
 	public Integer getLiberationRegisterCounts() {
-		if (connectionG2Mensagem == null)
-			connectToDBG2Mensagem();
+		
+		verifyToOpenConnectionG2Mensagem(false);
 		
 		try {
 			this.statement = connectionG2Mensagem.prepareStatement(SQL_SELECT_COUNT_LIBERATION);
@@ -500,14 +509,16 @@ public class AppsBean {
 		} catch (SQLException e) {
 			logger.error(e.getMessage());
 			e.printStackTrace();
+		} finally {
+			closeConnectionsG2Mensagem();
 		}
 		
 		return null;
 	}
 	
 	public Integer getLiberationLastId() {
-		if (connectionG2Mensagem == null)
-			connectToDBG2Mensagem();
+		
+		verifyToOpenConnectionG2Mensagem(false);
 		
 		try {
 			this.statement = connectionG2Mensagem.prepareStatement(SQL_SELECT_LAST_REGISTER_LIBERATION);
@@ -519,13 +530,15 @@ public class AppsBean {
 		} catch (SQLException e) {
 			logger.error(e.getMessage());
 			e.printStackTrace();
+		} finally {
+			closeConnectionsG2Mensagem();
 		}
 		return null;
 	}
 	
 	public void deleteOldLiberation(Long id) {
-		if (connectionG2Mensagem == null)
-			connectToDBG2Mensagem();
+		
+		verifyToOpenConnectionG2Mensagem(false);
 		
 		try {
 			this.statement = connectionG2Mensagem.prepareStatement(SQL_DELETE_LIBERATION);
@@ -535,16 +548,14 @@ public class AppsBean {
 		} catch (SQLException e) {
 			logger.error(e.getMessage());
 			e.printStackTrace();
+		} finally {
+			closeConnectionsG2Mensagem();
 		}
 	}
 	
 	public void insertLiberation(Liberation liberation) {
-		if (connectionG2Mensagem == null)
-			connectToDBG2Mensagem();
 		
-		/*String sql = INSERT_LIBERATION + "('" + liberation.getSystemLiberationDate() + "', '" + 
-				liberation.getOperator() + "', '" + liberation.getTempLiberationDate() + "', " + 
-				liberation.getClientId() + ", '" + liberation.getObs() + "');";*/
+		verifyToOpenConnectionG2Mensagem(false);
 		
 		String sql = INSERT_LIBERATION;
 		
@@ -587,13 +598,14 @@ public class AppsBean {
 			this.statement.executeUpdate();
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} finally {
+			closeConnectionsG2Mensagem();
 		}
-		
 	}
 	
 	public Long hasLiberationIdCliente(Long clientId) {
-		if (connectionG2Mensagem == null)
-			connectToDBG2Mensagem();
+		
+		verifyToOpenConnectionG2Mensagem(false);
 		
 		try {
 			this.statement = connectionG2Mensagem.prepareStatement(GET_LIBERATION_BY_ID_CLIENTE);
@@ -605,17 +617,23 @@ public class AppsBean {
 			}
 			
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			closeConnectionsG2Mensagem();
 		}
 		
 		return null;
 	}
 	
 	
-	public void updateLiberation(Liberation liberation, Long clientId) {
-		if (connectionG2Mensagem == null)
-			connectToDBG2Mensagem();
+	public void updateLiberation(Liberation liberation, Long clientId, boolean isPDV) {
+		
+		if (isPDV) {
+			System.out.println("atualizando liberacao no PDV");
+			setHostnamePDV();
+		}
+
+		verifyToOpenConnectionG2Mensagem(isPDV);
 
 		String sql = UPDATE_LIBERATION;
 		if (liberation.getVerificationDate() != null)
@@ -636,13 +654,14 @@ public class AppsBean {
 		} catch (SQLException e) {
 			logger.error(e.getMessage());
 			e.printStackTrace();
+		} finally {
+			closeConnectionsG2Mensagem();
 		}
 	}
 	
 	public void updateConfigInternalClientCode(Long clientId) {
 		
-		if (connection == null)
-			connectToDB();
+		verifyToOpenConnection();
 		
 		if (clientId != null) {
 			try {
@@ -654,6 +673,8 @@ public class AppsBean {
 			} catch (SQLException e) {
 				logger.error(e.getMessage());
 				e.printStackTrace();
+			} finally {
+				closeConnections();
 			}
 		}
 		
@@ -662,8 +683,7 @@ public class AppsBean {
 	public List<SightSale> getListSightSaleNotUploaded() {
 		List<SightSale> listSightSale = new ArrayList<SightSale>();
 		
-		if (connection == null)
-			connectToDB();
+		verifyToOpenConnection();
 		
 		try {
 			this.statement = connection.prepareStatement(SQL_SELECT_SIGHT_SALE_NFE_NOT_UPLOADED);
@@ -692,8 +712,7 @@ public class AppsBean {
 	public List<SightSale> getListSightSaleCanceled() {
 		List<SightSale> listSightSale = new ArrayList<SightSale>();
 
-		if (connection == null)
-			connectToDB();
+		verifyToOpenConnection();
 		
 		try {
 			this.statement = connection.prepareStatement(SQL_SELECT_SIGHT_SALE_CANCELED);
@@ -714,14 +733,16 @@ public class AppsBean {
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} finally {
+			closeConnections();
 		}
 		
 		return listSightSale;
 	}
 	
 	public void updateNfeStatusUploadedOk(SightSale sightSale) {
-		if (connection == null)
-			connectToDB();
+
+		verifyToOpenConnection();
 		
 		try {
 			this.statement = connection.prepareStatement(SQL_UPDATE_SIGHT_SALE_UPLOADED_OK);
@@ -733,15 +754,15 @@ public class AppsBean {
 			this.statement.executeUpdate();
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} finally {
+			closeConnections();
 		}
-		
 	}
 	
 	public List<QuickSell> getListQuickSellNotUploaded() {
-		List<QuickSell> listQuickSell = new ArrayList<QuickSell>();
+		verifyToOpenConnection();
 		
-		if (connection == null)
-			connectToDB();
+		List<QuickSell> listQuickSell = new ArrayList<QuickSell>();
 		
 		try {
 			this.statement = connection.prepareStatement(SQL_SELECT_QUICK_SELL_NFE_NOT_UPLOADED);
@@ -762,14 +783,16 @@ public class AppsBean {
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} finally {
+			closeConnections();
 		}
 		
 		return listQuickSell;
 	}
 	
 	public void updateNfceQuickSellStatusUploadedOk(QuickSell quickSell) {
-		if (connection == null)
-			connectToDB();
+		
+		verifyToOpenConnection();
 		
 		try {
 			this.statement = connection.prepareStatement(SQL_UPDATE_QUICK_SELL_UPLOADED_OK);
@@ -781,13 +804,14 @@ public class AppsBean {
 			this.statement.executeUpdate();
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} finally {
+			closeConnections();
 		}
 		
 	}
 	
 	public List<QuickSell> getListQuickSellCanceled() {
-		if (connection == null)
-			connectToDB();
+		verifyToOpenConnection();
 		
 		List<QuickSell> listQuickSellCanceled = new ArrayList<QuickSell>();
 		
@@ -811,7 +835,10 @@ public class AppsBean {
 		} catch (SQLException e) {
 			e.printStackTrace();
 			logger.error(e);
+		} finally {
+			closeConnections();
 		}
+		
 		return listQuickSellCanceled;
 	}	
 	
@@ -819,8 +846,7 @@ public class AppsBean {
 		
 		String path = null;
 		
-		if (connection == null)
-			connectToDB();
+		verifyToOpenConnection();
 		
 		try {
 			this.statement = connection.prepareStatement(SQL_SELECT_PATH_BACKUP_CONFIG);
@@ -833,9 +859,70 @@ public class AppsBean {
 		} catch (SQLException e) {
 			logger.error(e);
 			e.printStackTrace();
+		} finally {
+			closeConnections();
 		}
 		
 		return path;
 	}
+	
+	private void closeConnections() {
+		if (this.resultSet != null) {
+			try {
+				this.resultSet.close();
+			} catch (SQLException e) {
+				logger.error(e);
+				System.out.println(e.getMessage());
+			}
+		}
+		if (connection != null) {
+			try {
+				connection.close();
+			} catch (SQLException e) {
+				logger.error(e);
+				System.out.println(e.getMessage());
+			}	
+		}
+		if (this.statement != null) {
+			try {
+				this.statement.close();
+			} catch (SQLException e) {
+				logger.error(e);
+				System.out.println(e.getMessage());
+			}
+		}
+	}
+	
+	private void closeConnectionsG2Mensagem() {
+		if (this.connectionG2Mensagem != null) {
+			try {
+				this.connectionG2Mensagem.close();
+			} catch (SQLException e) {
+				logger.error(e);
+				System.out.println(e.getMessage());
+			}
+		}
+	}
+	
+	private void verifyToOpenConnection() {
+		try {
+			if (connection == null || connection.isClosed())
+				connectToDB();
+		} catch (SQLException e) {
+			System.out.println(e);
+			logger.error(e);
+		}
+	}
+	
+	private void verifyToOpenConnectionG2Mensagem(boolean isPDV) {
+		try {
+			if (connectionG2Mensagem == null || connectionG2Mensagem.isClosed())
+				connectToDBG2Mensagem(isPDV);
+		} catch (SQLException e) {
+			System.out.println(e);
+			logger.error(e);
+		}
+	}
+	
 	
 }

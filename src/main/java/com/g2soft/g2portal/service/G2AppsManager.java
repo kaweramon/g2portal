@@ -135,7 +135,7 @@ public class G2AppsManager {
 					}
 				}
 				writeChangesAfterUpdate(labelG2, labelPDV, labelG2Version, pcType, g2TempNameAndVersion,
-						pdvTempNamAndVersion);
+						pdvTempNamAndVersion, appG2FromServer.getVersionUp());
 			} else {
 				System.out.println("Diretório Vazio");
 				logger.error("Diretório Vazio, não existe ou sem permissão");
@@ -148,10 +148,10 @@ public class G2AppsManager {
 	}
 
 	public void writeChangesAfterUpdate(JLabel labelG2, JLabel labelPDV, JLabel labelG2Version, String pcType,
-			String g2TempNameAndVersion, String pdvTempNamAndVersion) {
-		writeCurrentVersionOnConfig(appG2FromServer.getVersionUp());
-		writeTransferedVersion(appG2FromServer.getVersionUp());
-		changeG2Version(appG2FromServer.getVersionUp(), labelG2Version);
+			String g2TempNameAndVersion, String pdvTempNamAndVersion, Integer versionUp) {
+		writeCurrentVersionOnConfig(versionUp);
+		writeTransferedVersion(versionUp);
+		changeG2Version(versionUp, labelG2Version);
 		if (pcType == "Servidor" || pcType == "PDV")
 			writeUpdaterStatusOkOnConfig();
 		labelG2.setText(g2TempNameAndVersion);
@@ -370,6 +370,23 @@ public class G2AppsManager {
 		return null;
 	}
 	
+	public Integer getCurrentVersionFromConfigServer() {
+		try {
+			in = new BufferedReader(new FileReader("\\\\" + ip.replace(" ", "") + "\\G2 Soft\\config.ini"));
+			String line;
+			while ((line = in.readLine()) != null) {				
+				if (line.contains("versao_atual_g2"))
+					return Integer.parseInt(line.substring(line.indexOf("=") + 1, line.length()));
+			}
+			in.close();
+		} catch (NumberFormatException e) {
+			logger.error(e.getMessage());
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+		} 
+		return null;
+	}
+	
 	public Boolean hasVersionTransfered(Integer version) {
 		try {
 			File logFile = new File("C:\\G2 Soft\\logs\\logG2Portal.txt");
@@ -529,10 +546,23 @@ public class G2AppsManager {
 			filePathLocal.mkdirs();
 		
 		try {
-			labelTaskStatus.setText("Copiando Arquivos pela rede, ip: " + ip);
-			FileUtils.copyDirectoryToDirectory(filePathNetwork, filePathLocal);
-			writeChangesAfterUpdate(labelG2, labelPDV, labelG2Version, pcType, 
-					g2TempNameAndVersion, pdvTempNamAndVersion);
+			labelTaskStatus.setText("Copiando Arquivos pela rede");
+			System.out.println(filePathLocal);
+			if (filePathNetwork.exists()) {
+				for (File file : filePathNetwork.listFiles()) {
+					labelTaskStatus.setText("Copiando Arquivo: " + file.getName());
+					FileUtils.copyFileToDirectory(file, filePathLocal);
+				}
+			}
+			System.out.println(appG2FromServer);
+			if (appG2FromServer != null && appG2FromServer.getVersionUp() != null) {
+				writeChangesAfterUpdate(labelG2, labelPDV, labelG2Version, pcType, 
+						g2TempNameAndVersion, pdvTempNamAndVersion, appG2FromServer.getVersionUp());
+			} else {
+				writeChangesAfterUpdate(labelG2, labelPDV, labelG2Version, pcType, 
+						g2TempNameAndVersion, pdvTempNamAndVersion, getCurrentVersionFromConfigServer());
+			}
+			
 		} catch (IOException e) {
 			logger.error("Erro ao transferir Pasta Files pela rede: " + e.getMessage());
 		}
@@ -618,11 +648,9 @@ public class G2AppsManager {
 			JLabel labelG2, JLabel labelPDV, JLabel labelG2Version, String pcType,
 			String g2TempNameAndVersion, String pdvTempNamAndVersion) {
 		if (!this.msgNetworkErrorConfigShowed) {
-			final JOptionPane pane = new JOptionPane("N\u00E3o foi poss\u00EDvel ler o arquivo de "
-					+ "configura\u00E7\u00E3o do servidor pela rede, "
-		    		+ "por favor entre em contato com o suporte (83) 3292-3886 \n"
-					+ "Motivo: " + e.getMessage());
-		    final JDialog dialog = pane.createDialog((JFrame)null, "Error de Conex\u00E3o");
+			final JOptionPane pane = new JOptionPane("N\u00E3o foi poss\u00EDvel se conectar com o servidor, "
+    	    		+ "por favor entre em contato com o suporte (83) 3292-3886");
+		    final JDialog dialog = pane.createDialog((JFrame)null, "Error de Conex\u00E3o do config no servidor");
 		    dialog.setLocation(200 ,200);
 		    dialog.setVisible(true);
 		    this.msgNetworkErrorConfigShowed = true;

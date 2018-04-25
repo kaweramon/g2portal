@@ -270,7 +270,8 @@ class ConnectToDBTask extends TimerTask {
 				labelG2.setEnabled(false);
 	        	labelPDV.setEnabled(false);
 			}
-			if (pcType == "PDV") {
+			if (pcType == "PDV" && 
+					!g2AppsManager.isAppRunning("Project1") && !g2AppsManager.isAppRunning("PDV")) {
 				if (g2AppsManager.pdvHasUpdate(g2AppsManager, labelTaskStatus, 
 						labelG2, labelPDV, labelG2Version, pcType, 
 						labelG2.getText(), labelPDV.getText())) {
@@ -529,11 +530,16 @@ class UpdateLiberation extends TimerTask {
 		if (this.appsBean == null)
 			this.appsBean = new AppsBean();
 		
+		String clientCnpj = this.appsBean.getClientCnpj();
+		Liberation liberation = this.appsBean.getLiberationByCnpj(clientCnpj);
+		if (g2AppsManager.getPcType() == "PDV")
+			this.appsBean.updateLiberation(liberation, liberation.getClientId(), true);
+		
+		
 		if (!g2AppsManager.isSpecialG2()) {
-			String clientCnpj = this.appsBean.getClientCnpj();
 			
 			if (clientCnpj != null && clientCnpj.length() > 0) {
-				Liberation liberation = this.appsBean.getLiberationByCnpj(clientCnpj);
+				
 				System.out.println("Liberacao no Servidor G2:" + liberation.toString());
 				if (liberation != null) {
 					try {
@@ -548,8 +554,8 @@ class UpdateLiberation extends TimerTask {
 						if (liberationId != null) {
 							System.out.println("Deletando liberacao: " + liberation.getClientId());
 							this.appsBean.deleteOldLiberation(liberationId);
-							System.out.println("Atualizando Liberacao, ID Cliente:" + liberation.getClientId());
-							this.appsBean.updateLiberation(liberation, liberation.getClientId());
+							System.out.println("Atualizando Liberacao, ID Cliente:" + liberation.getClientId());							
+							this.appsBean.updateLiberation(liberation, liberation.getClientId(), false);
 						} else {
 							System.out.println("Inserindo Liberacao, ID Cliente:" + liberation.getClientId());
 							this.appsBean.insertLiberation(liberation);
@@ -564,7 +570,6 @@ class UpdateLiberation extends TimerTask {
 							e.printStackTrace();
 						}
 					}
-						
 					labelTaskStatus.setText("");
 				}
 			}

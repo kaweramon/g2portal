@@ -238,7 +238,7 @@ public class MainMenu implements MouseListener {
 		radioButtonG2Recepcao.setBounds(500 + insets.left, 3 + insets.top, 110, 
 				size.height + 10);
 		
-		JLabel labelPortalVersion = new JLabel("Vers\u00E3o 0.2.0");
+		JLabel labelPortalVersion = new JLabel("Vers\u00E3o 0.2.3");
 		labelPortalVersion.setBounds(685 + insets.left, 35 + insets.top, 100, size.height + 10);
 		
 		labelConnectionStatus.setBounds(685 + insets.left, 15 + insets.top, 90, size.height + 10);
